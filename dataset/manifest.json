@@ -1,0 +1,27 @@
+{
+  "dataset_version": "1.0.0",
+  "target_plugin": "acs",
+  "target_release": "v0.4.10",
+  "recorded_against": "0.4.9",
+  "recorded_on": "2026-09-06",
+  "description": "Golden dataset for the acs plugin's v0.4.10 release gate. Covers the surfaces v0.4.10 changed (the deterministic acs.py entry point and the contracts it made computable) plus the pipeline spine every release depends on.",
+  "tiers": {
+    "deterministic": "dataset/cases/*.json, run by runner/run_golden.py. No model, no network, $0.",
+    "agentic": "evals/**/case.yaml, run by `claude plugin eval`. Spawns sessions; costs money."
+  },
+  "recorded_against_note": "The plugin.json version on the tree these goldens were captured from still reads 0.4.9 \u2014 the v0.4.10 bump had not been cut yet. The tree itself carried the full [Unreleased] changelog section that becomes v0.4.10 (MAR-500/E0 and MAR-501/E1). Bump this to \"0.4.10\" as part of cutting the release, once the suite is green against the bumped build.",
+  "covers": [
+    "MAR-402",
+    "MAR-520",
+    "MAR-521",
+    "MAR-522",
+    "MAR-523",
+    "MAR-524",
+    "MAR-525",
+    "MAR-526",
+    "MAR-527",
+    "MAR-528",
+    "MAR-529",
+    "MAR-530"
+  ]
+}

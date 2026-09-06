@@ -1,0 +1,95 @@
+{
+  "group": "ticket locks",
+  "description": "MAR-530 made state writes and locks fail closed. A ticket lock held by another checkout is never auto-stolen: `lock status` reports WHO holds it and ON WHAT EVIDENCE, and breaking it requires the explicit `force-unlock` with a reason, which is recorded in the partition's audit ledger. `stale` is the verdict; `basis` is how it was reached — and the two regimes differ, because a lock held on another host has no liveness signal at all and degrades to an age timeout.\n\nThe three age-based bases below are host-independent and so are pinned here. The pid-liveness bases (holder-process-gone / -live / -unprobeable) depend on the running host's process table and on whether the runner may probe the pid, so they are left to the plugin's own unit tests rather than recorded as goldens.",
+  "surface": "acs lock",
+  "covers": ["MAR-530"],
+  "profile": "ticketed",
+  "cases": [
+    {
+      "id": "LOCK-001",
+      "title": "an unlocked ticket reports held=false with no verdict to give",
+      "invoke": {"argv": ["lock", "status", "--ticket", "TKT-1"]},
+      "expect": {
+        "exit_code": 0,
+        "stdout_json_subset": {"ok": true, "ticket_id": "TKT-1", "held": false, "lock": null, "stale": null, "basis": null, "basis_detail": null, "held_by_me": false}
+      }
+    },
+    {
+      "id": "LOCK-002",
+      "title": "a foreign lock older than 24h is stale on an age timeout",
+      "files": [{"base": "ticket", "path": ".lock", "fixture": "lock/foreign-stale.json"}],
+      "invoke": {"argv": ["lock", "status", "--ticket", "TKT-1"]},
+      "expect": {
+        "exit_code": 0,
+        "stdout_json_subset": {
+          "ok": true, "held": true, "held_by_me": false, "stale": true,
+          "basis": "age-timeout",
+          "basis_detail": "no liveness signal is available and it is older than 24h"
+        }
+      }
+    },
+    {
+      "id": "LOCK-003",
+      "title": "a foreign lock younger than 24h is NOT stale",
+      "files": [{"base": "ticket", "path": ".lock", "fixture": "lock/foreign-fresh.json"}],
+      "invoke": {"argv": ["lock", "status", "--ticket", "TKT-1"]},
+      "expect": {
+        "exit_code": 0,
+        "stdout_json_subset": {
+          "ok": true, "held": true, "held_by_me": false, "stale": false,
+          "basis": "age-within-timeout",
+          "basis_detail": "no liveness signal is available and it is younger than 24h"
+        }
+      }
+    },
+    {
+      "id": "LOCK-004",
+      "title": "FAIL CLOSED: an unreadable created_at is not stale",
+      "note": "With no liveness signal and no readable age, the safe answer is 'do not steal this lock', not 'assume it is dead'.",
+      "files": [{"base": "ticket", "path": ".lock", "fixture": "lock/foreign-no-timestamp.json"}],
+      "invoke": {"argv": ["lock", "status", "--ticket", "TKT-1"]},
+      "expect": {
+        "exit_code": 0,
+        "stdout_json_subset": {
+          "ok": true, "held": true, "stale": false,
+          "basis": "age-unknown",
+          "basis_detail": "no liveness signal is available and it carries no readable created_at"
+        }
+      }
+    },
+    {
+      "id": "LOCK-005",
+      "title": "force-unlock refuses to run without a reason",
+      "note": "The reason is the audit record's whole point, so it is a required argument rather than an optional note.",
+      "invoke": {"argv": ["lock", "force-unlock", "--ticket", "TKT-1"]},
+      "expect": {
+        "exit_code": 2,
+        "stderr_contains": ["the following arguments are required: --reason"]
+      }
+    },
+    {
+      "id": "LOCK-006",
+      "title": "force-unlock breaks a stale lock and records the staleness it saw",
+      "files": [{"base": "ticket", "path": ".lock", "fixture": "lock/foreign-stale.json"}],
+      "invoke": {"argv": ["lock", "force-unlock", "--ticket", "TKT-1", "--reason", "holder host is decommissioned"]},
+      "expect": {
+        "exit_code": 0,
+        "stdout_json_subset": {
+          "ok": true, "forced": true, "detail": "lock broken",
+          "broken_lock": {"checkout_id": "elsewhere-deadbeef", "hostname": "some-other-host.invalid", "pid": 4242}
+        }
+      }
+    },
+    {
+      "id": "LOCK-007",
+      "title": "force-unlock also breaks a NON-stale foreign lock — the audit is the control, not a refusal",
+      "note": "Deliberate: an operator who has decided a live-looking lock must go is not blocked, but the ledger records the staleness verdict that stood at the time, so the decision is reviewable afterwards.",
+      "files": [{"base": "ticket", "path": ".lock", "fixture": "lock/foreign-fresh.json"}],
+      "invoke": {"argv": ["lock", "force-unlock", "--ticket", "TKT-1", "--reason", "operator intervention"]},
+      "expect": {
+        "exit_code": 0,
+        "stdout_json_subset": {"ok": true, "forced": true, "detail": "lock broken"}
+      }
+    }
+  ]
+}

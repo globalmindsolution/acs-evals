@@ -1,0 +1,223 @@
+{
+  "description": "Routing probes for all 25 acs skills. 23 are model-invocable and get one natural-language request that must route to them without naming them. The 2 user-only skills (disable-model-invocation:true) get a pair each: an explicit invocation that MUST route, and a bare description of their intent that must NOT.\n\nThis file is the curated data. runner/gen_plugin_eval.py renders it into evals/**/case.yaml for `claude plugin eval`; dataset/cases/10-skills.json pins the routing SURFACE (each skill's shipped description and invocation flag) deterministically, with no model.",
+  "skill_count": 25,
+  "probe_count": 27,
+  "probes": [
+    {
+      "id": "ROUTE-code",
+      "skill": "acs:code",
+      "kind": "positive",
+      "prompt": "TKT-1 already has approved specs in the workspace. Please implement it.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-architecture",
+      "skill": "acs:create-architecture",
+      "kind": "positive",
+      "prompt": "We have a PRD now. Draw up the system architecture docs \u2014 the C4 views and the key flows.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-design",
+      "skill": "acs:create-design",
+      "kind": "positive",
+      "prompt": "This epic is design-significant. Settle the system design and weigh the options before anyone writes code.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-docs",
+      "skill": "acs:create-docs",
+      "kind": "positive",
+      "prompt": "Bootstrap the quality and operations doc sets together, in parallel rather than one after the other.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-operations",
+      "skill": "acs:create-operations",
+      "kind": "positive",
+      "prompt": "Write up our release process, the runbooks, observability and how we handle incidents.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-pr",
+      "skill": "acs:create-pr",
+      "kind": "positive",
+      "prompt": "The implementation is finished and the verifier passed. Open the pull request for it.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-prd",
+      "skill": "acs:create-prd",
+      "kind": "positive",
+      "prompt": "I want to define this product properly: vision, the problem, personas, goals with measurable success metrics.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-principles",
+      "skill": "acs:create-principles",
+      "kind": "positive",
+      "prompt": "Capture the engineering principles this team works to, with the rationale for each.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-project",
+      "skill": "acs:create-project",
+      "kind": "positive",
+      "prompt": "This repo is brand new and empty. Scaffold the project skeleton from the approved architecture.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-quality",
+      "skill": "acs:create-quality",
+      "kind": "positive",
+      "prompt": "Write our test strategy and the coverage policy that goes with it.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-requirements",
+      "skill": "acs:create-requirements",
+      "kind": "positive",
+      "prompt": "Reverse-engineer the functional and non-functional requirements out of this existing codebase.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-standards",
+      "skill": "acs:create-standards",
+      "kind": "positive",
+      "prompt": "Document our coding standards, the naming and layout conventions, and a review checklist.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-create-ticket",
+      "skill": "acs:create-ticket",
+      "kind": "positive",
+      "prompt": "We need a ticket for adding SSO login to the customer portal.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-docs-sync",
+      "skill": "acs:docs-sync",
+      "kind": "positive",
+      "prompt": "The code change is done. Make sure the docs match what actually changed before we raise the PR.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-handoff",
+      "skill": "acs:handoff",
+      "kind": "positive",
+      "prompt": "I need to stop here. Park this ticket cleanly so I can pick it up in a fresh session tomorrow.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-merge-pr",
+      "skill": "acs:merge-pr",
+      "kind": "positive",
+      "prompt": "The PR is approved and CI is green. Land it and clean up the branch.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-metrics",
+      "skill": "acs:metrics",
+      "kind": "positive",
+      "prompt": "Show me our delivery throughput \u2014 how many tickets are done, and how the pipeline is converting.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-release",
+      "skill": "acs:release",
+      "kind": "positive",
+      "prompt": "Cut version 0.4.10: assemble the changelog section and open the release PR.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-setup",
+      "skill": "acs:setup",
+      "kind": "positive",
+      "prompt": "Configure acs for this repository \u2014 ticket prefix, coverage target, merge strategy.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-ship",
+      "skill": "acs:ship",
+      "kind": "positive",
+      "prompt": "Take this request end to end for me, from ticket all the way to a pull request.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-standardize-project",
+      "skill": "acs:standardize-project",
+      "kind": "positive",
+      "prompt": "Audit this existing repo against our standards and scaffold whatever tooling is missing.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-test",
+      "skill": "acs:test",
+      "kind": "positive",
+      "prompt": "Run our test suites and tell me whether anything broke.",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-usage",
+      "skill": "acs:usage",
+      "kind": "positive",
+      "prompt": "How much have we spent on AI for this repo, and what's the token burn per role?",
+      "must_route": true,
+      "why": "A natural-language request in the skill's domain, never naming the skill."
+    },
+    {
+      "id": "ROUTE-install-hooks-explicit",
+      "skill": "acs:install-hooks",
+      "kind": "positive",
+      "prompt": "/acs:install-hooks",
+      "must_route": true,
+      "why": "disable-model-invocation:true, so only an explicit invocation may route."
+    },
+    {
+      "id": "ROUTE-install-hooks-negative",
+      "skill": "acs:install-hooks",
+      "kind": "negative",
+      "prompt": "Set up the git hooks for this repository so checks run before every commit.",
+      "must_route": false,
+      "why": "The no-auto-invoke guarantee: a bare description of this skill's intent must NOT route to it."
+    },
+    {
+      "id": "ROUTE-update-explicit",
+      "skill": "acs:update",
+      "kind": "positive",
+      "prompt": "/acs:update",
+      "must_route": true,
+      "why": "disable-model-invocation:true, so only an explicit invocation may route."
+    },
+    {
+      "id": "ROUTE-update-negative",
+      "skill": "acs:update",
+      "kind": "negative",
+      "prompt": "Check whether there is a newer version of the acs plugin available.",
+      "must_route": false,
+      "why": "The no-auto-invoke guarantee: a bare description of this skill's intent must NOT route to it."
+    }
+  ]
+}

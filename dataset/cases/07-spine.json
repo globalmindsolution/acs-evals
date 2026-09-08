@@ -28,7 +28,8 @@
           "may collide with ids already used in this repo's history",
           "new-ticket.py --seed-next <n>"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "MINT-002",
@@ -346,5 +347,6 @@
         }
       }
     }
-  ]
+  ],
+  "severity": "major"
 }

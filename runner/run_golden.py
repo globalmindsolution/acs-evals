@@ -35,6 +35,24 @@ from harness import (DATASET, FIXTURES, BuildError,  # noqa: E402
 CASES_DIR = os.path.join(DATASET, "cases")
 
 
+def RUBRIC_VERDICT(sev_failed):
+    """The gate's verdict line, per docs/RUBRIC.md.
+
+    A `minor` failure is drift to triage, not a reason to hold a release; a
+    `critical` one is never accepted for a cut. Keeping the rule here — and in
+    the exit status — is what stops "337/337" from being the only thing anyone
+    reads.
+    """
+    if sev_failed["critical"]:
+        return ("VERDICT: BLOCKED (critical) — do not cut a release from this "
+                "build. See docs/RUBRIC.md.")
+    if sev_failed["major"]:
+        return ("VERDICT: BLOCKED — a documented contract moved. Fix, or "
+                "re-record deliberately in its own commit.")
+    return ("VERDICT: PASSED (minor drift) — not blocking, but triage each "
+            "before the next cut.")
+
+
 # --------------------------------------------------------------------------
 # Loading
 # --------------------------------------------------------------------------
@@ -48,6 +66,9 @@ def load_cases():
             case.setdefault("profile", doc.get("profile", "bare"))
             case.setdefault("covers", doc.get("covers", []))
             case.setdefault("surface", doc.get("surface", ""))
+            # An unclassified assertion is assumed to matter: the failure mode
+            # of the opposite default is a critical case counted as noise.
+            case.setdefault("severity", doc.get("severity", "major"))
             case["_file"] = path
             cases.append(case)
     return cases
@@ -479,6 +500,7 @@ def main():
                 "surface": case.get("surface", ""), "profile": case["profile"],
                 "covers": case.get("covers", []),
                 "kind": case.get("kind", "cli"),
+                "severity": case["severity"],
                 "known_divergence": case.get("known_divergence") or None,
                 "note": case.get("note", ""),
                 "seconds": round(time.time() - case_started, 3),
@@ -506,13 +528,22 @@ def main():
         write_results(args.json, manifest, build, records, elapsed)
         print("\nresults written to %s" % args.json)
 
+    sev_failed = {level: len([c for c, _e, _o in failures
+                              if c["severity"] == level])
+                  for level in ("critical", "major", "minor")}
     print("\n%d passed, %d failed, %d total  (%.1fs)"
           % (passed, len(failures), len(cases), elapsed))
+    if failures:
+        print("failed by severity: %d critical, %d major, %d minor"
+              % (sev_failed["critical"], sev_failed["major"],
+                 sev_failed["minor"]))
+        print(RUBRIC_VERDICT(sev_failed))
     if failures and not args.verbose:
         print("\nre-run with -v for the diffs, or:")
         for case, _errs, _obs in failures[:5]:
             print("  python3 runner/run_golden.py -v --case %s" % case["id"])
-    return 1 if failures else 0
+    # docs/RUBRIC.md: critical and major block; minor does not.
+    return 1 if (sev_failed["critical"] or sev_failed["major"]) else 0
 
 
 def write_results(path, manifest, build, records, elapsed):
@@ -526,6 +557,13 @@ def write_results(path, manifest, build, records, elapsed):
         os.makedirs(directory, exist_ok=True)
     passed = [r for r in records if r["status"] == "pass"]
     failed = [r for r in records if r["status"] == "fail"]
+    by_sev = {}
+    for level in ("critical", "major", "minor"):
+        group = [r for r in records if r["severity"] == level]
+        by_sev[level] = {
+            "total": len(group),
+            "failed": len([r for r in group if r["status"] == "fail"]),
+        }
     doc = {
         "schema": "acs-evals/run-result/1",
         "generated_at": datetime.datetime.now(datetime.timezone.utc)
@@ -542,6 +580,7 @@ def write_results(path, manifest, build, records, elapsed):
             "total": len(records), "passed": len(passed), "failed": len(failed),
             "known_divergences": len([r for r in records if r["known_divergence"]]),
             "seconds": elapsed,
+            "by_severity": by_sev,
         },
         "cases": records,
     }

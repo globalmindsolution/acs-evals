@@ -291,7 +291,8 @@
         "frontmatter_nonempty": [
           "description"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "SKILL-merge-pr",
@@ -433,7 +434,8 @@
         "frontmatter_nonempty": [
           "description"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "SKILL-usage",
@@ -453,5 +455,6 @@
         ]
       }
     }
-  ]
+  ],
+  "severity": "major"
 }

@@ -90,7 +90,8 @@
         "stdout_excludes": [
           "\"heading\": \"pr_title\""
         ]
-      }
+      },
+      "severity": "major"
     },
     {
       "id": "PRCONV-004",
@@ -124,7 +125,8 @@
           "does not match required format '[{ticket_id}] {title}'",
           "e.g. [TKT-12] Short description"
         ]
-      }
+      },
+      "severity": "major"
     },
     {
       "id": "STRUCT-001",
@@ -282,7 +284,8 @@
           "coverage unavailable",
           "deadline not configured"
         ]
-      }
+      },
+      "severity": "major"
     },
     {
       "id": "SESSIONEND-001",
@@ -313,7 +316,9 @@
             "exists": false
           }
         ]
-      }
+      },
+      "severity": "major"
     }
-  ]
+  ],
+  "severity": "minor"
 }

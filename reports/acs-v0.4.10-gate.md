@@ -12,8 +12,8 @@ All 337 cases match the behaviour recorded for acs 0.4.9. No regression in the s
 | Dataset | `1.0.0`, recorded against acs `0.4.9` |
 | Cases | 337 passed, 0 failed, 337 total |
 | Known divergences | 2 |
-| Wall clock | 16.8s |
-| Generated | 2026-09-08T18:25:21Z |
+| Wall clock | 15.9s |
+| Generated | 2026-09-08T18:31:20Z |
 
 Scope: the deterministic tier only. No model, no network, no cost. The agentic routing tier (`evals/`, `claude plugin eval`) is authored but has never been executed — it is early access and was not enabled on the account this dataset was built with, so nothing in this report speaks to routing behaviour at runtime.
 

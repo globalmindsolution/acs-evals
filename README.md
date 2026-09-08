@@ -47,9 +47,16 @@ make record    DANGER — rewrite goldens from this build; read the diff
 
 | Document | What it covers |
 |---|---|
+| [`docs/RUBRIC.md`](docs/RUBRIC.md) | **What a case is worth and what makes a run pass** — severity levels and release thresholds |
+| [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) | Intended use, sampling, and the threats to validity — read before quoting a green run |
 | [`docs/EVALUATION-PROCESS.md`](docs/EVALUATION-PROCESS.md) | Roles, when to run, how to triage a red case, re-recording rules, how to extend the dataset |
 | [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md) | The eval steps of an `acs` release cut, in order |
 | [`reports/`](reports/) | The reviewed report for each gated release |
+
+Not every case counts the same. Per [`docs/RUBRIC.md`](docs/RUBRIC.md), one
+**critical** failure blocks a release outright, **major** blocks unless the
+golden is re-recorded deliberately, and **minor** drift is triage rather than a
+hold — so `make gate` exits non-zero on the first two and zero on the third.
 
 Latest report: [`reports/acs-v0.4.10-gate.md`](reports/acs-v0.4.10-gate.md) —
 **337/337 passed**, 2 known divergences, against acs `0.4.9` (the pre-`v0.4.10`

@@ -90,13 +90,39 @@ def _ticket_key(ticket):
 
 
 def verdict(doc):
-    """(state, headline, detail) — read from totals, never recomputed."""
+    """(state, headline, detail) — the rubric's verdict, never recomputed.
+
+    Severity decides, not the failure count: docs/RUBRIC.md says one critical
+    failure blocks a release outright and no number of passes offsets it, while
+    minor drift is triage rather than a hold.
+    """
     totals = doc["totals"]
+    sev = totals.get("by_severity") or {}
+    crit = sev.get("critical", {}).get("failed", 0)
+    major = sev.get("major", {}).get("failed", 0)
+    minor = sev.get("minor", {}).get("failed", 0)
+    if crit:
+        return ("fail", "Release gate: BLOCKED (critical)",
+                "%d critical case(s) failed. A critical assertion is one whose "
+                "failure lets acs produce a wrong or unauditable outcome in a "
+                "consumer repo — a gate opening that should have stayed shut, a "
+                "fail-closed path failing open, or evidence that is no longer "
+                "evidence. Do not cut a release from this build." % crit)
+    if major:
+        return ("fail", "Release gate: BLOCKED",
+                "%d major case(s) failed: a documented contract moved. Fix the "
+                "regression, or re-record the golden deliberately in its own "
+                "reviewed commit and name the change in the changelog."
+                % major)
+    if minor:
+        return ("warn", "Release gate: PASSED (minor drift)",
+                "%d minor case(s) failed. Minor drift does not block a release, "
+                "but each one needs a decision before the next cut — "
+                "unexplained drift is often the first symptom of something "
+                "larger." % minor)
     if totals["failed"]:
         return ("fail", "Release gate: BLOCKED",
-                "%d of %d cases do not match the recorded behaviour. Each one "
-                "is either a regression in the build or a golden that needs "
-                "re-recording — decide which before cutting the release."
+                "%d of %d cases do not match the recorded behaviour."
                 % (totals["failed"], totals["total"]))
     if not doc.get("baseline_match", True):
         return ("warn", "Release gate: PASSED (off-baseline)",
@@ -277,12 +303,22 @@ def render_html(doc):
     t = doc["totals"]
     biggest = max((g["total"] for g in groups), default=1)
 
+    sev = t.get("by_severity") or {}
+
+    def sev_note(level, blocking):
+        entry = sev.get(level, {})
+        failed, total = entry.get("failed", 0), entry.get("total", 0)
+        if failed:
+            return "%d of %d failed — %s" % (failed, total, blocking)
+        return "%d cases, all passing" % total
+
     kpis = [
-        ("Cases run", "%d" % t["total"], "deterministic, %.0fs wall clock" % t["seconds"]),
-        ("Passed", "%d" % t["passed"],
-         "%.1f%% of the suite" % (100.0 * t["passed"] / max(t["total"], 1))),
-        ("Failed", "%d" % t["failed"],
-         "regression or stale golden" if t["failed"] else "no behaviour changed"),
+        ("Critical", "%d" % sev.get("critical", {}).get("failed", 0),
+         sev_note("critical", "blocks the release outright")),
+        ("Major", "%d" % sev.get("major", {}).get("failed", 0),
+         sev_note("major", "blocks unless re-recorded")),
+        ("Minor", "%d" % sev.get("minor", {}).get("failed", 0),
+         sev_note("minor", "triage, does not block")),
         ("Divergences", "%d" % t["known_divergences"],
          "pinned as observed, need a decision"),
     ]
@@ -333,14 +369,17 @@ def render_html(doc):
         blocks = []
         for c in divergences(doc):
             block = c["known_divergence"]
-            rows = "".join(
+            # NOT `rows`: that name holds the coverage table's body further up,
+            # and rebinding it here silently replaced the whole table with this
+            # definition list.
+            fields = "".join(
                 "<div><dt>%s</dt><dd>%s</dd></div>" % (e(label), e(block[key]))
                 for key, label in DIVERGENCE_FIELDS if block.get(key))
             blocks.append(
                 '<article class="finding warn-finding">'
                 '<h3><code>%s</code> %s</h3>'
                 '<dl class="divergence">%s</dl></article>'
-                % (e(c["id"]), e(c["title"]), rows))
+                % (e(c["id"]), e(c["title"]), fields))
         div_html = (
             '<section id="divergences"><h2>Known divergences</h2>'
             '<p class="lede">These cases pass because they pin what the build '
@@ -356,7 +395,8 @@ def render_html(doc):
         % ("row-fail" if c["status"] == "fail" else
            ("row-warn" if c["known_divergence"] else ""),
            e(c["id"]), e(c["title"]),
-           e(GROUP_TITLES.get(c["group"], c["group"])), e(c["profile"]),
+           e(GROUP_TITLES.get(c["group"], c["group"])),
+           e(c.get("severity", "major")),
            ('<span class="pill pill-fail">fail</span>' if c["status"] == "fail"
             else ('<span class="pill pill-warn">divergence</span>'
                   if c["known_divergence"]
@@ -602,8 +642,8 @@ footer code { font-size:.85em; }
   <section>
     <h2>Coverage by surface</h2>
     <p class="lede">Bar length is the group's share of the largest group, so
-    the widths compare case counts directly. $total cases across ten
-    groups.</p>
+    the widths compare case counts directly. $total cases, weighted by the
+    severity rubric rather than counted flat.</p>
     <div class="tablewrap">
       <table>
         <thead><tr>
@@ -638,7 +678,7 @@ footer code { font-size:.85em; }
       <table>
         <thead><tr>
           <th scope="col">Case</th><th scope="col">Assertion</th>
-          <th scope="col">Group</th><th scope="col">Profile</th>
+          <th scope="col">Group</th><th scope="col">Severity</th>
           <th scope="col" class="status">Status</th>
         </tr></thead>
         <tbody>$index_rows</tbody>

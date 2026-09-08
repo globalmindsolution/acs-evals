@@ -70,7 +70,8 @@
           "passed is true but the verdict carries 1 blocking finding(s) (Tests)",
           "`passed` is derived from the findings, not asserted alongside them"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-003",
@@ -103,7 +104,8 @@
           "blocking": 1,
           "errors": []
         }
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-004",
@@ -134,7 +136,8 @@
           "passed is false but no finding is `blocking`",
           "record the blocking finding that fails the verdict, or report the pass"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-005",
@@ -197,7 +200,8 @@
           "dimensions 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16 are not reported",
           "a verdict must cover every dimension it owed (use result \"n/a\" where one does not apply)"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-007",
@@ -259,7 +263,8 @@
           "verdict ticket_id is 'TKT-9' but this is 'TKT-1'",
           "a verdict is evidence only for the run that produced it"
         ]
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-009",
@@ -300,7 +305,8 @@
             "iteration": 1
           }
         }
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-014",
@@ -339,7 +345,8 @@
             "skill": "docs-sync"
           }
         }
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "VERDICT-010",
@@ -532,7 +539,9 @@
           "dimensions 5 are not reported",
           "a verdict must cover every dimension it owed"
         ]
-      }
+      },
+      "severity": "critical"
     }
-  ]
+  ],
+  "severity": "major"
 }

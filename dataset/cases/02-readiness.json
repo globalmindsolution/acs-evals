@@ -93,7 +93,8 @@
           },
           "stop_reason": "readiness failed: ci required check(s) still running: build"
         }
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "READY-004",
@@ -151,7 +152,8 @@
           },
           "stop_reason": "readiness failed: ci required check(s) still running: mystery"
         }
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "READY-006",
@@ -329,7 +331,8 @@
           },
           "stop_reason": "readiness failed: conflicts mergeable is UNKNOWN \u2014 GitHub has not finished computing mergeability; re-invoke once it settles"
         }
-      }
+      },
+      "severity": "critical"
     },
     {
       "id": "READY-012",
@@ -539,7 +542,9 @@
           },
           "stop_reason": "the PR recording is missing state, isDraft, mergeStateStatus, statusCheckRollup, so readiness cannot be judged from it"
         }
-      }
+      },
+      "severity": "critical"
     }
-  ]
+  ],
+  "severity": "major"
 }

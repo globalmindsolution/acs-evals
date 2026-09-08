@@ -512,6 +512,7 @@ def render(build_root):
         "surface": "schemas/*.json",
         "covers": ["MAR-527", "MAR-530"],
         "profile": "bare",
+        "severity": "minor",
         "generated_by": "runner/gen_schema_cases.py",
         "cases": cases,
     }

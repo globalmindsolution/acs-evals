@@ -74,6 +74,12 @@ release checklist, not a background job — see
 
 ## Triaging a failure
 
+**First read the severity.** [`RUBRIC.md`](RUBRIC.md) decides whether the run
+blocks: a `critical` failure stops the release with no exceptions, a `major` one
+blocks unless the golden is deliberately re-recorded, and `minor` drift does not
+block but must still be triaged before the next cut. The runner prints the
+verdict and exits accordingly.
+
 A red case is **a behaviour change**, not automatically a defect. There are
 exactly three outcomes, and the process is choosing between them.
 
@@ -161,7 +167,9 @@ escapes to a consumer.
    that states the property, not the mechanics. "high stakes lifts even a
    trivial change to STANDARD" beats "test lane derive with high stakes".
 3. Add a `note` whenever the *why* is not obvious from the title.
-4. Tag it with `covers` so it shows up in the report's ticket rollup.
+4. Tag it with `covers` so it shows up in the report's ticket rollup, and give
+   it a `severity` if the group default is wrong for it — apply the test in
+   [`RUBRIC.md`](RUBRIC.md#test), and let ties go to the higher level.
 5. Run it. Then deliberately break the expectation and run it again, to prove
    the case can actually fail. A case that cannot fail is worse than no case.
 

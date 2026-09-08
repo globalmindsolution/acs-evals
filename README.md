@@ -21,6 +21,42 @@ This repo is a third thing, and the difference is what makes it useful:
 It runs against the **installed plugin** by default, not a source tree, so it
 also catches packaging drift that a source-tree test suite cannot see.
 
+## The evaluation process
+
+One command runs the gate:
+
+```bash
+export ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs   # the build being released
+make gate
+```
+
+`make gate` = **`eval`** (run the 208 deterministic cases) → **`check`**
+(assert `evals/` is in sync with its source data) → **`report`** (render
+`results/report.md` and `results/report.html`). It stops at the first failure.
+
+```
+make help      every target
+make eval      run the deterministic tier, write results/latest.json
+make report    render the report from the last run
+make list      list every case, run nothing
+make record    DANGER — rewrite goldens from this build; read the diff
+```
+
+| Document | What it covers |
+|---|---|
+| [`docs/EVALUATION-PROCESS.md`](docs/EVALUATION-PROCESS.md) | Roles, when to run, how to triage a red case, re-recording rules, how to extend the dataset |
+| [`docs/RELEASE-CHECKLIST.md`](docs/RELEASE-CHECKLIST.md) | The eval steps of an `acs` release cut, in order |
+| [`reports/`](reports/) | The reviewed report for each gated release |
+
+Latest report: [`reports/acs-v0.4.10-gate.md`](reports/acs-v0.4.10-gate.md) —
+**208/208 passed**, 2 known divergences, against acs `0.4.9` (the pre-`v0.4.10`
+unreleased tree).
+
+Run it **both ways** before a release. With `ACS_PLUGIN_ROOT` set you are
+checking the code; with it unset the runner resolves the newest *installed*
+build, which is what a consumer actually executes — that run is the only one
+that catches packaging drift.
+
 ## Two tiers
 
 | Tier | Where | Runner | Cost | Status |
@@ -133,34 +169,33 @@ closing the gap shows up as a loud failure rather than passing unnoticed.
   bypassed. If v0.4.10 wires the two arguments through, flip both cases to
   expect exit 2.
 
-## Using it as a release gate
-
-```bash
-# 1. point at the build being released
-export ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs
-
-# 2. every case must pass
-python3 runner/run_golden.py || exit 1
-
-# 3. the generated eval tree must match its source data
-python3 runner/gen_plugin_eval.py --check || exit 1
-```
+## When a case fails
 
 A failure is not automatically a bug — it is a **behaviour change that needs a
-decision**. Either it is a regression and the plugin is wrong, or it is
-intended and the golden is stale. Re-record deliberately, and read the diff:
+decision**. There are exactly three outcomes:
+
+1. The build changed and that is **wrong** → regression. Fix the plugin, leave
+   the golden alone.
+2. The build changed and that is **intended** → re-record that case, in its own
+   commit, naming the ticket that justifies it.
+3. The build is right and the **case** was wrong → a dataset bug. Fix the case
+   and say so.
 
 ```bash
-python3 runner/run_golden.py --record   # rewrites expectations from this build
-git diff dataset/cases/                 # review EVERY line before committing
+python3 runner/run_golden.py -v --case VERDICT-009   # see exactly what differs
+make record                                          # then, deliberately
+git diff dataset/cases/                              # and read EVERY line
 ```
 
-Never re-record to make a red suite green without reading the diff — that
-converts the gate into a rubber stamp.
+Never re-record to turn a red run green without reading the diff — that
+converts the gate into a rubber stamp, and it will not catch the next
+regression either. Full triage guidance:
+[`docs/EVALUATION-PROCESS.md`](docs/EVALUATION-PROCESS.md).
 
 ## Layout
 
 ```
+Makefile                 the process, as commands — `make help`
 dataset/
   manifest.json          dataset version, target release, recorded-against build
   routing.json           curated routing probes (source for evals/)
@@ -174,8 +209,14 @@ runner/
   harness.py             build resolution, sandbox profiles, redaction
   jsonschema_mini.py     stdlib JSON Schema subset validator
   gen_plugin_eval.py     renders routing.json into evals/
+  report.py              renders a run result into report.md + report.html
 evals/
   routing/**/case.yaml   generated `claude plugin eval` cases
+docs/
+  EVALUATION-PROCESS.md  roles, triage, re-recording, extending the dataset
+  RELEASE-CHECKLIST.md   the eval steps of a release cut
+reports/                 the reviewed report for each gated release
+results/                 working output of a run (gitignored)
 ```
 
 ## Writing a case

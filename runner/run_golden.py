@@ -24,6 +24,7 @@ import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -322,6 +323,8 @@ def main():
                     help="rewrite goldens from this build (review the diff!)")
     ap.add_argument("--keep", action="store_true", help="keep sandbox dirs")
     ap.add_argument("-v", "--verbose", action="store_true", help="show every diff")
+    ap.add_argument("--json", metavar="PATH",
+                    help="write the full run result as JSON (for runner/report.py)")
     args = ap.parse_args()
 
     try:
@@ -351,6 +354,8 @@ def main():
     print("build root: %s\n" % build.root)
 
     failures, passed = [], 0
+    records = []
+    started = time.time()
     by_profile = {}
     for case in cases:
         by_profile.setdefault(case["profile"], []).append(case)
@@ -358,6 +363,7 @@ def main():
     touched = set()
     for profile, group in sorted(by_profile.items()):
         for case in group:
+            case_started = time.time()
             if case.get("kind") == "schema":
                 observed = execute_schema(case, build)
             elif case.get("kind") == "skill_manifest":
@@ -374,6 +380,18 @@ def main():
                 print("  rec  %-22s %s" % (case["id"], case["title"]))
                 continue
             errs = compare(case["expect"], observed)
+            records.append({
+                "id": case["id"], "title": case["title"],
+                "group": os.path.basename(case["_file"])[:-5],
+                "surface": case.get("surface", ""), "profile": case["profile"],
+                "covers": case.get("covers", []),
+                "kind": case.get("kind", "cli"),
+                "known_divergence": case.get("known_divergence") or None,
+                "note": case.get("note", ""),
+                "seconds": round(time.time() - case_started, 3),
+                "status": "fail" if errs else "pass",
+                "diffs": errs,
+            })
             if errs:
                 failures.append((case, errs, observed))
                 print("  FAIL %-22s %s" % (case["id"], case["title"]))
@@ -390,12 +408,54 @@ def main():
               "committing." % (len(cases), build.version))
         return 0
 
-    print("\n%d passed, %d failed, %d total" % (passed, len(failures), len(cases)))
+    elapsed = round(time.time() - started, 2)
+    if args.json:
+        write_results(args.json, manifest, build, records, elapsed)
+        print("\nresults written to %s" % args.json)
+
+    print("\n%d passed, %d failed, %d total  (%.1fs)"
+          % (passed, len(failures), len(cases), elapsed))
     if failures and not args.verbose:
         print("\nre-run with -v for the diffs, or:")
         for case, _errs, _obs in failures[:5]:
             print("  python3 runner/run_golden.py -v --case %s" % case["id"])
     return 1 if failures else 0
+
+
+def write_results(path, manifest, build, records, elapsed):
+    """The machine-readable run result runner/report.py renders.
+
+    Deliberately self-contained: it names the build, the dataset and the clock,
+    so a report generated from it months later still says what was tested.
+    """
+    directory = os.path.dirname(os.path.abspath(path))
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    passed = [r for r in records if r["status"] == "pass"]
+    failed = [r for r in records if r["status"] == "fail"]
+    doc = {
+        "schema": "acs-evals/run-result/1",
+        "generated_at": datetime.datetime.now(datetime.timezone.utc)
+                                 .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "dataset": {
+            "version": manifest["dataset_version"],
+            "target_release": manifest.get("target_release"),
+            "recorded_against": manifest.get("recorded_against"),
+            "covers": manifest.get("covers", []),
+        },
+        "build": {"version": build.version, "root": build.root},
+        "baseline_match": build.version == manifest.get("recorded_against"),
+        "totals": {
+            "total": len(records), "passed": len(passed), "failed": len(failed),
+            "known_divergences": len([r for r in records if r["known_divergence"]]),
+            "seconds": elapsed,
+        },
+        "cases": records,
+    }
+    with open(path, "w") as fh:
+        json.dump(doc, fh, indent=2)
+        fh.write("\n")
+    return doc
 
 
 def rewrite(touched, cases):

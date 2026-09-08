@@ -1,0 +1,179 @@
+# The acs evaluation process
+
+How this repo is used to decide whether an `acs` plugin build is fit to
+release. It is written to be followed by someone who did not build the dataset.
+
+- **What it answers:** has the plugin's observable behaviour moved since the
+  last release?
+- **What it does not answer:** is the plugin *good*? Whether a behaviour is
+  correct is a human judgement; this process only makes every change to it
+  visible and deliberate.
+
+## Roles
+
+| Role | Owns |
+|---|---|
+| **Release engineer** | Runs the gate before a version bump. Decides go / no-go. |
+| **Reviewer** | Reads the report on the release PR. Signs off on divergences. |
+| **Dataset maintainer** | Adds cases for new surfaces; re-records goldens when a change is intended. |
+
+On a small team one person wears all three hats. The point of separating them
+is that **the person who re-records a golden should not be the only person who
+sees the diff.**
+
+## The gate
+
+One command. Run it from a clean checkout of this repo.
+
+```bash
+export ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs   # the build being released
+make gate
+```
+
+`make gate` runs three steps and stops at the first failure:
+
+1. **`make eval`** — the deterministic tier. 208 cases against the resolved
+   build, writing `results/latest.json`. Non-zero exit if any case differs.
+2. **`make check`** — asserts `evals/**/case.yaml` is still in sync with
+   `dataset/routing.json`. Catches a routing probe edited in the generated
+   tree, where it would be silently overwritten.
+3. **`make report`** — renders `results/report.md` and `results/report.html`
+   from the run result.
+
+Attach `results/report.md` to the release PR.
+
+### What "the build under test" means
+
+`ACS_PLUGIN_ROOT` unset is the **default and the more honest check**: the runner
+resolves the newest *installed* build under
+`~/.claude/plugins/cache/*/acs/*/`, which is what a consumer actually executes.
+Setting `ACS_PLUGIN_ROOT` points it at a working tree instead — right for
+pre-release verification, wrong for confirming a published release.
+
+Run it **both ways** before a release: the working tree tells you the code is
+right, the installed build tells you the packaging is.
+
+## When to run it
+
+| Trigger | Tier | Who |
+|---|---|---|
+| Before any version bump | full gate, both build sources | Release engineer |
+| On a PR that touches `plugins/acs/` | `make eval` | Author |
+| After publishing a release | full gate against the *installed* build | Release engineer |
+| When adding a plugin surface | `make eval` + new cases | Dataset maintainer |
+
+This repo deliberately ships **no CI workflow**. The deterministic tier needs
+an `acs` build resolved on the machine, and the plugin repo's own policy (C-4)
+keeps eval execution local rather than in CI. Running it is a step in the
+release checklist, not a background job — see
+[`RELEASE-CHECKLIST.md`](RELEASE-CHECKLIST.md).
+
+## Triaging a failure
+
+A red case is **a behaviour change**, not automatically a defect. There are
+exactly three outcomes, and the process is choosing between them.
+
+```
+   red case
+      │
+      ├── the build behaves differently and that is WRONG
+      │       → regression. Fix the plugin. Do not touch the golden.
+      │
+      ├── the build behaves differently and that is INTENDED
+      │       → re-record this case, in its own commit, with the ticket that
+      │         changed it named in the message. A reviewer reads the diff.
+      │
+      └── the build is right and the CASE was wrong
+              → fix the case. This is a dataset bug; say so in the message.
+```
+
+Work it like this:
+
+```bash
+# 1. see exactly what differs
+python3 runner/run_golden.py -v --case VERDICT-009
+
+# 2. read the case — its `title` and `note` say what it was pinning and why
+grep -A30 '"id": "VERDICT-009"' dataset/cases/03-verdict.json
+
+# 3. reproduce by hand against the build, in a scratch repo
+python3 $ACS_PLUGIN_ROOT/hooks/scripts/acs.py verdict show --ticket TKT-1 ...
+```
+
+Only once you can say **which of the three outcomes it is** do you change
+anything.
+
+### Re-recording
+
+```bash
+make record              # rewrites expectations from the current build
+git diff dataset/cases/  # READ EVERY LINE
+```
+
+Rules, because this is the one operation that can quietly destroy the gate:
+
+- Re-record **only the cases you have decided about** — `make record` rewrites
+  everything selected, so narrow it: `python3 runner/run_golden.py --record
+  --case 'VERDICT-*'`.
+- Commit the re-recording **separately** from any other change, with the
+  ticket that justifies it in the message.
+- Never re-record to turn a red run green without reading the diff. That
+  converts the gate into a rubber stamp, and it will not catch the next
+  regression either.
+
+## Known divergences
+
+A case may pin behaviour that **differs from what the code's own contract
+states**. These are recorded deliberately: the case asserts what the build
+actually does, and carries a `known_divergence` block saying what the contract
+says instead, what causes the gap, how far it reaches, and what to change if
+it is closed.
+
+They surface in the report under **Known divergences**, and each needs a
+decision before release: *fix it now*, or *accept it for this release and say
+so in the changelog*.
+
+When a divergence is closed in the plugin, its case fails — which is the point.
+Flip the expectation and delete the `known_divergence` block in the same commit
+as the fix lands.
+
+## Extending the dataset
+
+Add a case when a plugin change introduces an observable surface, or when a bug
+escapes to a consumer.
+
+1. Drive the surface by hand first and capture what it really does. **Never
+   write an expectation from reading the source** — the dataset's value is that
+   it records observed behaviour.
+2. Add the case to the right `dataset/cases/NN-*.json` group, with a `title`
+   that states the property, not the mechanics. "high stakes lifts even a
+   trivial change to STANDARD" beats "test lane derive with high stakes".
+3. Add a `note` whenever the *why* is not obvious from the title.
+4. Tag it with `covers` so it shows up in the report's ticket rollup.
+5. Run it. Then deliberately break the expectation and run it again, to prove
+   the case can actually fail. A case that cannot fail is worse than no case.
+
+For a routing probe, edit `dataset/routing.json` and run `make generate`.
+
+## The second tier, and what this process does not cover
+
+`evals/` holds `claude plugin eval` cases for skill routing. **They have never
+been executed** — the feature is early access and was not enabled on the
+account this dataset was built with, so the grader schema is authored from the
+CLI's `--help` output rather than a passing run.
+
+Until that is validated, the gate covers routing only as far as the
+deterministic `SKILL-*` cases go: every skill ships, carries a routing
+`description`, and declares the right `disable-model-invocation`. **Whether a
+real request routes to the right skill at runtime is not currently verified by
+anything in this repo.** Treat that as an open gap, not a covered area.
+
+To close it, once early access is enabled:
+
+```bash
+claude plugin eval acs --case route-code --runs 1   # confirm the schema
+claude plugin eval acs --tag routing                # then the full tier
+```
+
+Fix any schema mismatch in `runner/gen_plugin_eval.py`, regenerate, and add the
+tier to `make gate`.

@@ -16,7 +16,7 @@ JSON    ?= $(RESULTS)/latest.json
 REPORT  ?= $(RESULTS)/report
 
 .DEFAULT_GOAL := help
-.PHONY: help gate eval report check list record clean verify-self
+.PHONY: help gate eval report check generate mutation list record clean verify-self
 
 help: ## Show this help
 	@printf '\nacs-evals — evaluation process\n\n'
@@ -24,7 +24,7 @@ help: ## Show this help
 	  | awk -F':.*?## ' '{printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
 	@printf '\nBuild under test: %s\n\n' "$${ACS_PLUGIN_ROOT:-<newest installed acs>}"
 
-gate: eval check report ## THE RELEASE GATE — run everything, fail on any red
+gate: eval check mutation report ## THE RELEASE GATE — run everything, fail on any red
 	@printf '\nRelease gate complete. Report: $(REPORT).md / $(REPORT).html\n'
 
 eval: ## Run the deterministic tier (208 cases, zero cost, no model)
@@ -33,11 +33,16 @@ eval: ## Run the deterministic tier (208 cases, zero cost, no model)
 report: ## Render report.md + report.html from the last run
 	$(PYTHON) runner/report.py --json $(JSON) --out $(REPORT)
 
-check: ## Fail if evals/ is stale against dataset/routing.json
+check: ## Fail if any generated tree is stale against its source
 	$(PYTHON) runner/gen_plugin_eval.py --check
+	$(PYTHON) runner/gen_schema_cases.py --check
 
-generate: ## Re-render evals/**/case.yaml from dataset/routing.json
+generate: ## Re-render both generated trees (routing cases, schema constraint cases)
 	$(PYTHON) runner/gen_plugin_eval.py
+	$(PYTHON) runner/gen_schema_cases.py
+
+mutation: ## Measure schema coverage by deleting each constraint (must stay >= 50%)
+	$(PYTHON) runner/mutation_sweep.py --threshold 0.5
 
 list: ## List every case without running anything
 	$(PYTHON) runner/run_golden.py --list

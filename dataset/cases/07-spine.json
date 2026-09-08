@@ -177,7 +177,7 @@
     {
       "id": "TICKET-004",
       "title": "ticket save MERGES: a field absent from the document is kept, not cleared",
-      "note": "A behaviour change MAR-521's own migration note called 'none'. A caller can no longer remove a field by omitting it \u2014 worth pinning, because callers written against the old replace semantics silently stop clearing fields.",
+      "note": "A behaviour change MAR-521's own migration note called 'none'. The save sends only id and priority; every other field must SURVIVE, which is what the on-disk assertion checks \u2014 a caller can no longer clear a field by omitting it.",
       "profile": "ticketed",
       "invoke": {
         "argv": [
@@ -194,7 +194,22 @@
         }
       },
       "expect": {
-        "exit_code": 0
+        "exit_code": 0,
+        "after": [
+          {
+            "base": "ticket",
+            "path": "ticket.json",
+            "exists": true,
+            "json_subset": {
+              "id": "TKT-1",
+              "priority": "critical",
+              "title": "Add user login",
+              "type": "task",
+              "size": "small",
+              "lane": "SMALL"
+            }
+          }
+        ]
       }
     },
     {

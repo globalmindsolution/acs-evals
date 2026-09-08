@@ -196,10 +196,22 @@ class Sandbox:
 
     # -- driving ---------------------------------------------------------
     def run(self, script, *argv, stdin=None):
-        """Run one acs helper CLI inside the sandbox repo."""
+        """Run one acs helper CLI inside the sandbox repo.
+
+        `input=""` rather than `input=None` when a case supplies no stdin: hook
+        scripts read their payload from stdin, and with `input=None` the child
+        INHERITS the runner's stdin and blocks forever waiting for a payload
+        that never arrives — which is exactly what happens when the suite runs
+        detached from a terminal. An empty string closes it, so the script sees
+        EOF and takes its no-payload path, which is what these cases exercise.
+
+        The timeout is a backstop for the same failure mode: a hung child must
+        fail one case, not the run.
+        """
         proc = subprocess.run(
             ["python3", self.build.script(script)] + [str(a) for a in argv],
-            cwd=self.repo, input=stdin, capture_output=True, text=True,
+            cwd=self.repo, input=stdin if stdin is not None else "",
+            capture_output=True, text=True, timeout=120,
             env=dict(os.environ, **_GIT_ENV))
         return {"exit_code": proc.returncode,
                 "stdout": proc.stdout, "stderr": proc.stderr}
@@ -250,8 +262,13 @@ def redact(text, sb):
     """Replace this run's paths, ids and clock readings with stable tokens."""
     if not text:
         return text
+    # The build root is redacted too, and it matters most for `--record`: a
+    # surface that echoes it (`acs context` reports `plugin_root`) would
+    # otherwise bake this machine's absolute install path into a golden, and
+    # the recorded case would then pass only on the machine that recorded it.
     for real, token in ((sb.partition, "<WS>"), (sb.ws, "<WSROOT>"),
-                        (sb.repo, "<REPO>"), (sb.base, "<BASE>")):
+                        (sb.repo, "<REPO>"), (sb.base, "<BASE>"),
+                        (sb.build.root, "<PLUGIN>")):
         text = text.replace(real, token)
         real_resolved = os.path.realpath(real)
         if real_resolved != real:

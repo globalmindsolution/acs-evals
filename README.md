@@ -30,13 +30,16 @@ export ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs   # the build being rel
 make gate
 ```
 
-`make gate` = **`eval`** (run the 208 deterministic cases) → **`check`**
-(assert `evals/` is in sync with its source data) → **`report`** (render
+`make gate` = **`eval`** (run the 337 deterministic cases) → **`check`**
+(assert both generated trees are in sync with their sources) → **`mutation`**
+(measure schema coverage, floor 50%) → **`report`** (render
 `results/report.md` and `results/report.html`). It stops at the first failure.
 
 ```
 make help      every target
 make eval      run the deterministic tier, write results/latest.json
+make generate  re-render the two generated case trees
+make mutation  measure schema coverage by deleting each constraint
 make report    render the report from the last run
 make list      list every case, run nothing
 make record    DANGER — rewrite goldens from this build; read the diff
@@ -49,7 +52,7 @@ make record    DANGER — rewrite goldens from this build; read the diff
 | [`reports/`](reports/) | The reviewed report for each gated release |
 
 Latest report: [`reports/acs-v0.4.10-gate.md`](reports/acs-v0.4.10-gate.md) —
-**208/208 passed**, 2 known divergences, against acs `0.4.9` (the pre-`v0.4.10`
+**337/337 passed**, 2 known divergences, against acs `0.4.9` (the pre-`v0.4.10`
 unreleased tree).
 
 Run it **both ways** before a release. With `ACS_PLUGIN_ROOT` set you are
@@ -61,7 +64,7 @@ that catches packaging drift.
 
 | Tier | Where | Runner | Cost | Status |
 |---|---|---|---|---|
-| **Deterministic** | `dataset/` | `runner/run_golden.py` | $0, no model, no network | **208 cases, all green** |
+| **Deterministic** | `dataset/` | `runner/run_golden.py` | $0, no model, no network | **337 cases, all green** |
 | **Agentic (routing)** | `evals/` | `claude plugin eval` | paid sessions | authored, **never executed** — see below |
 
 ### Tier 1 — deterministic (runs today)
@@ -117,21 +120,22 @@ ship, carry a routing `description`, and declare the right
 
 ## What the dataset covers
 
-208 deterministic cases across the surfaces v0.4.10 changed **and** the pipeline
+337 deterministic cases across the surfaces v0.4.10 changed **and** the pipeline
 spine every release depends on.
 
 | Cases | Group | What it pins |
 |---:|---|---|
 | 32 | `01-derivation` | slug, the 12-cell lane matrix, lane ranks, stakes recommendation and the ratchet guard, docs fan-out batching |
 | 18 | `02-readiness` | merge-pr's four readiness dimensions replayed from recorded `gh pr view` documents (MAR-524) |
-| 14 | `03-verdict` | the verifier verdict's derived-`passed` invariant, completeness, freshness, lens merge (MAR-527) |
+| 15 | `03-verdict` | the verifier verdict's derived-`passed` invariant, completeness, freshness, lens merge (MAR-527) |
 | 8 | `04-filemap` | the executor file map's declaration side and its accumulating union (MAR-529) |
 | 7 | `05-lock` | lock staleness bases and the audited `force-unlock` (MAR-530) |
 | 45 | `06-gates` | all 15 gated skills × 3 workspace states — the pipeline ordering, and the reason each refusal gives |
 | 12 | `07-spine` | ticket minting, the fail-closed id counter, settings resolution, ticket read/write |
-| 35 | `08-schemas` | all 12 shipped JSON schemas, accept **and** reject cases |
+| 35 | `08-schemas` | the 12 shipped JSON schemas — the accept seeds, and the reject cases that carry judgement |
 | 12 | `09-internals` | PR conventions, doc structure lint, status line, metrics aggregate, SessionEnd |
 | 25 | `10-skills` | every skill's shipped routing surface |
+| 128 | `11-schema-constraints` | **generated** — one reject case per reachable schema constraint |
 
 Tickets covered: MAR-402, MAR-520 – MAR-530.
 
@@ -152,6 +156,29 @@ Tickets covered: MAR-402, MAR-520 – MAR-530.
 - **`STAKES-REC-003`** — the default high-stakes globs are repo-root anchored,
   so `src/auth/**` does **not** match `auth/**`. A real sharp edge for any repo
   that nests its auth code.
+
+## How much this actually catches
+
+A passing suite says nothing about how much it would notice. The schema tier is
+measured, not asserted — every constraint in every shipped schema is deleted in
+turn, and one whose deletion leaves the suite green is a hole:
+
+```bash
+make mutation                                    # the coverage table
+python3 runner/mutation_sweep.py --holes         # every unpinned constraint
+```
+
+Current: **126/229 constraints (55.0%)**. It was 9.3% when the cases were all
+hand-written, which is why `11-schema-constraints.json` is generated from the
+schemas themselves. The 103 that remain are mostly branches under
+`oneOf`/`anyOf`, where breaking one constraint leaves another branch matching,
+so a single-constraint reject case would be unsound —
+`python3 runner/gen_schema_cases.py --report` lists them with reasons.
+
+The CLI tier has no automated equivalent (mutating it needs a writable copy of
+the build and a subprocess run per mutation). Spot-checked by hand, 6 of 7
+decision-table mutations were caught — including the verdict invariant, the
+readiness fail-closed path, gate messages and skill flags.
 
 ## Known divergences
 

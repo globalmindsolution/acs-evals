@@ -33,11 +33,10 @@ reasoning, not just the values):
 """
 
 import argparse
-import datetime
 import html
 import json
-import string
 import os
+import string
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -54,6 +53,7 @@ GROUP_TITLES = {
     "08-schemas": "Shipped JSON schemas",
     "09-internals": "Internals",
     "10-skills": "Skill inventory",
+    "11-schema-constraints": "Schema constraints (generated)",
 }
 
 

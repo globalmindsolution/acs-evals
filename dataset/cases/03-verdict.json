@@ -500,6 +500,39 @@
           ]
         }
       }
+    },
+    {
+      "id": "VERDICT-015",
+      "title": "a lens verdict that skips one of ITS OWN owed dimensions is refused",
+      "note": "Completeness is judged against the lens's subset, not all sixteen. Without this, VERDICT-011 only proves a complete lens-A verdict is ACCEPTED \u2014 a change that shrank lens A's owed set would go unnoticed.",
+      "files": [
+        {
+          "base": "ticket",
+          "path": "phases/code/iter-1-verdict-lens-A.json",
+          "fixture": "verdict/lens-a-incomplete.json"
+        }
+      ],
+      "invoke": {
+        "argv": [
+          "verdict",
+          "show",
+          "--ticket",
+          "TKT-1",
+          "--skill",
+          "code",
+          "--iteration",
+          "1",
+          "--lens",
+          "A"
+        ]
+      },
+      "expect": {
+        "exit_code": 2,
+        "stderr_contains": [
+          "dimensions 5 are not reported",
+          "a verdict must cover every dimension it owed"
+        ]
+      }
     }
   ]
 }

@@ -7,7 +7,8 @@ constraint. So the schema tier validates against exactly the keyword set those
 
     type, required, properties, additionalProperties, propertyNames,
     enum, const, minLength, minimum, maximum, exclusiveMinimum,
-    minItems, items, pattern, allOf, oneOf, if/then, $ref (local $defs)
+    minItems, minProperties, items, pattern, allOf, oneOf, if/then,
+    $ref (local $defs)
 
 `format` is parsed and ignored, which matches the 2020-12 default (format is an
 annotation, not an assertion, unless a vocabulary opts in). Anything outside
@@ -22,7 +23,8 @@ SUPPORTED = frozenset({
     "default", "examples", "deprecated", "readOnly", "writeOnly", "format",
     "type", "required", "properties", "additionalProperties", "propertyNames",
     "enum", "const", "minLength", "maxLength", "minimum", "maximum",
-    "exclusiveMinimum", "exclusiveMaximum", "minItems", "maxItems", "items",
+    "exclusiveMinimum", "exclusiveMaximum", "minItems", "maxItems",
+    "minProperties", "maxProperties", "items",
     "pattern", "allOf", "anyOf", "oneOf", "not", "if", "then", "else",
     "uniqueItems",
 })
@@ -128,6 +130,12 @@ def validate(instance, schema, root=None, path="$"):
                 errs.extend(validate(item, schema["items"], root, "%s[%d]" % (path, i)))
 
     if isinstance(instance, dict):
+        if "minProperties" in schema and len(instance) < schema["minProperties"]:
+            errs.append("%s: fewer than minProperties %s"
+                        % (path, schema["minProperties"]))
+        if "maxProperties" in schema and len(instance) > schema["maxProperties"]:
+            errs.append("%s: more than maxProperties %s"
+                        % (path, schema["maxProperties"]))
         for name in schema.get("required", []):
             if name not in instance:
                 errs.append("%s.%s: required property is missing" % (path, name))

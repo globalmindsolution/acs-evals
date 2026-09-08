@@ -2,7 +2,7 @@
 
 **Release gate: PASSED**
 
-All 208 cases match the behaviour recorded for acs 0.4.9. No regression in the surfaces this dataset covers.
+All 337 cases match the behaviour recorded for acs 0.4.9. No regression in the surfaces this dataset covers.
 
 | | |
 |---|---|
@@ -10,10 +10,10 @@ All 208 cases match the behaviour recorded for acs 0.4.9. No regression in the s
 | Build under test | acs `0.4.9` |
 | Target release | `v0.4.10` |
 | Dataset | `1.0.0`, recorded against acs `0.4.9` |
-| Cases | 208 passed, 0 failed, 208 total |
+| Cases | 337 passed, 0 failed, 337 total |
 | Known divergences | 2 |
-| Wall clock | 21.6s |
-| Generated | 2026-09-08T17:18:44Z |
+| Wall clock | 16.8s |
+| Generated | 2026-09-08T18:25:21Z |
 
 Scope: the deterministic tier only. No model, no network, no cost. The agentic routing tier (`evals/`, `claude plugin eval`) is authored but has never been executed — it is early access and was not enabled on the account this dataset was built with, so nothing in this report speaks to routing behaviour at runtime.
 
@@ -23,7 +23,7 @@ Scope: the deterministic tier only. No model, no network, no cost. The agentic r
 |---|---|---:|---:|---:|---:|
 | Derivation | `acs lane\|stakes\|slug\|fanout` | 32 | 32 | 0 | 0 |
 | Merge readiness | `acs readiness` | 18 | 18 | 0 | 0 |
-| Verifier verdict | `acs verdict` | 14 | 14 | 0 | 2 |
+| Verifier verdict | `acs verdict` | 15 | 15 | 0 | 2 |
 | Executor file map | `acs filemap` | 8 | 8 | 0 | 0 |
 | Ticket locks | `acs lock` | 7 | 7 | 0 | 0 |
 | Pipeline gates | `acs gate` | 45 | 45 | 0 | 0 |
@@ -31,7 +31,8 @@ Scope: the deterministic tier only. No model, no network, no cost. The agentic r
 | Shipped JSON schemas | `schemas/*.json` | 35 | 35 | 0 | 0 |
 | Internals | `pr-conventions.py\|structure_lint.py\|statusline.py\|metrics_aggregate.py\|dispatch.py` | 12 | 12 | 0 | 0 |
 | Skill inventory | `skills/*/SKILL.md` | 25 | 25 | 0 | 0 |
-| **Total** | | **208** | **208** | **0** | **2** |
+| Schema constraints (generated) | `schemas/*.json` | 128 | 128 | 0 | 0 |
+| **Total** | | **337** | **337** | **0** | **2** |
 
 ## Coverage by ticket
 
@@ -47,10 +48,10 @@ Cases are tagged with the ticket whose behaviour they pin. A ticket with no case
 | MAR-524 | 18 | 18 | 0 |
 | MAR-525 | 12 | 12 | 0 |
 | MAR-526 | 25 | 25 | 0 |
-| MAR-527 | 49 | 49 | 0 |
+| MAR-527 | 178 | 178 | 0 |
 | MAR-528 | 45 | 45 | 0 |
 | MAR-529 | 8 | 8 | 0 |
-| MAR-530 | 42 | 42 | 0 |
+| MAR-530 | 170 | 170 | 0 |
 
 ## Known divergences
 

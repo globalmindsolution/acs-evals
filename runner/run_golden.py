@@ -145,6 +145,19 @@ def compare(expect, observed):
         for needle in expect.get(key, []):
             if needle in observed[stream]:
                 errs.append("%s: %r unexpectedly in %s" % (key, needle, stream))
+    for want in expect.get("after", []):
+        seen = (observed.get("after") or {}).get(want["path"], {})
+        if "exists" in want and seen.get("exists") != want["exists"]:
+            errs.append("after[%s].exists: expected %s, got %s"
+                        % (want["path"], want["exists"], seen.get("exists")))
+            continue
+        if want.get("json_subset") is not None:
+            if "json" not in seen:
+                errs.append("after[%s]: not readable as JSON (%s)"
+                            % (want["path"], seen.get("error", "absent")))
+            else:
+                errs.extend("after[%s] %s" % (want["path"], e)
+                            for e in is_subset(want["json_subset"], seen["json"]))
     if "stdout_json" in expect or "stdout_json_subset" in expect:
         try:
             actual = json.loads(observed["stdout"])
@@ -292,20 +305,100 @@ def execute(case, sb):
                  *[expand(a, sb) for a in invoke["argv"]], stdin=stdin)
     return {"exit_code": raw["exit_code"],
             "stdout": redact(raw["stdout"], sb).strip(),
-            "stderr": redact(raw["stderr"], sb).strip()}
+            "stderr": redact(raw["stderr"], sb).strip(),
+            "after": read_after(case, sb)}
+
+
+def read_after(case, sb):
+    """The workspace state an `expect.after` clause asks about.
+
+    Some surfaces are judged by what they LEFT BEHIND, not by what they
+    printed: `ticket save` writes a document and says little, and the
+    SessionEnd hook is silent by design. A case whose only assertion is
+    `exit_code` would pass against a script that did nothing at all, so those
+    cases assert on the file instead.
+    """
+    out = {}
+    for want in case.get("expect", {}).get("after", []):
+        root = {"repo": sb.repo, "ws": sb.partition,
+                "ticket": sb.ticket_dir()}[want.get("base", "ticket")]
+        path = os.path.join(root, want["path"])
+        entry = {"exists": os.path.exists(path)}
+        if entry["exists"] and want.get("json_subset") is not None:
+            try:
+                with open(path) as fh:
+                    entry["json"] = json.load(fh)
+            except (OSError, ValueError) as exc:
+                entry["error"] = str(exc)
+        out[want["path"]] = entry
+    return out
 
 
 def record(case, observed):
-    """Rewrite this case's expectation from what the build actually produced."""
+    """Rewrite this case's expectation from what the build actually produced.
+
+    Kind-aware, because the three case kinds do not share an observation shape.
+    Reducing a schema or skill-manifest case to `{"exit_code": 0}` — which the
+    CLI-only version of this function did — leaves a case that asserts nothing
+    and can never fail again, which is strictly worse than deleting it.
+
+    It also preserves the SHAPE the case was authored with: a case written
+    against `stdout_json_subset` keeps a subset expectation over the same keys,
+    rather than being widened to an exact match over every key the surface
+    happens to emit today.
+    """
+    kind = case.get("kind", "cli")
+    if kind == "schema":
+        expect = {"valid": observed["valid"]}
+        if observed["errors"]:
+            # Keep the first error as the pinned reason, mirroring how these
+            # cases are authored: the rejection must name the constraint.
+            expect["errors_contain"] = [observed["errors"][0]]
+        case["expect"] = expect
+        return
+    if kind == "skill_manifest":
+        front = observed["manifest"]
+        expect = {"present": observed["present"]}
+        if observed["present"]:
+            keep = {k: front[k] for k in ("name", "disable-model-invocation")
+                    if k in front}
+            expect["frontmatter"] = keep
+            expect["frontmatter_nonempty"] = ["description"]
+            if "disable-model-invocation" not in front:
+                expect["frontmatter_absent"] = ["disable-model-invocation"]
+        case["expect"] = expect
+        return
+
+    previous = case.get("expect", {})
     expect = {"exit_code": observed["exit_code"]}
     try:
-        expect["stdout_json"] = json.loads(observed["stdout"])
+        parsed = json.loads(observed["stdout"])
     except ValueError:
-        if observed["stdout"]:
-            expect["stdout_contains"] = [observed["stdout"]]
+        parsed = None
+    if parsed is not None and "stdout_json_subset" in previous:
+        expect["stdout_json_subset"] = _refresh_subset(
+            previous["stdout_json_subset"], parsed)
+    elif parsed is not None:
+        expect["stdout_json"] = parsed
+    elif observed["stdout"]:
+        expect["stdout_contains"] = [observed["stdout"]]
     if observed["stderr"]:
         expect["stderr_contains"] = [observed["stderr"]]
     case["expect"] = expect
+
+
+def _refresh_subset(previous, actual):
+    """Re-read the keys the case already asserted, and only those.
+
+    A case that deliberately asserts four stable keys out of forty must not
+    become a forty-key exact match just because it was re-recorded.
+    """
+    if isinstance(previous, dict) and isinstance(actual, dict):
+        return {k: _refresh_subset(v, actual[k])
+                for k, v in previous.items() if k in actual}
+    if isinstance(previous, list) and isinstance(actual, list):
+        return actual
+    return actual
 
 
 # --------------------------------------------------------------------------

@@ -30,14 +30,18 @@ export ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs   # the build being rel
 make gate
 ```
 
-`make gate` runs three steps and stops at the first failure:
+`make gate` runs four steps and stops at the first failure:
 
-1. **`make eval`** — the deterministic tier. 208 cases against the resolved
+1. **`make eval`** — the deterministic tier. 337 cases against the resolved
    build, writing `results/latest.json`. Non-zero exit if any case differs.
-2. **`make check`** — asserts `evals/**/case.yaml` is still in sync with
-   `dataset/routing.json`. Catches a routing probe edited in the generated
-   tree, where it would be silently overwritten.
-3. **`make report`** — renders `results/report.md` and `results/report.html`
+2. **`make check`** — asserts both GENERATED trees are still in sync with their
+   sources: `evals/**/case.yaml` against `dataset/routing.json`, and
+   `dataset/cases/11-schema-constraints.json` against the shipped schemas.
+   Catches a generated file edited by hand, where the edit would be silently
+   overwritten.
+3. **`make mutation`** — measures what the schema tier would actually catch, by
+   deleting each constraint in turn. Fails below 50% coverage.
+4. **`make report`** — renders `results/report.md` and `results/report.html`
    from the run result.
 
 Attach `results/report.md` to the release PR.
@@ -110,6 +114,12 @@ make record              # rewrites expectations from the current build
 git diff dataset/cases/  # READ EVERY LINE
 ```
 
+Re-recording is kind-aware: a schema case comes back with `valid` plus the
+constraint its rejection named, a skill-manifest case with its frontmatter
+assertions, and a case authored against `stdout_json_subset` keeps a subset
+over the same keys rather than widening to an exact match. It does **not**
+rewrite generated cases — regenerate those with `make generate`.
+
 Rules, because this is the one operation that can quietly destroy the gate:
 
 - Re-record **only the cases you have decided about** — `make record` rewrites
@@ -120,6 +130,8 @@ Rules, because this is the one operation that can quietly destroy the gate:
 - Never re-record to turn a red run green without reading the diff. That
   converts the gate into a rubber stamp, and it will not catch the next
   regression either.
+- After re-recording, run `make mutation`. A drop in coverage means the
+  re-recording weakened what the suite pins, whatever the case count says.
 
 ## Known divergences
 

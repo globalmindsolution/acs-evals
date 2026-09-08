@@ -1,6 +1,6 @@
 {
   "group": "executor file map",
-  "description": "MAR-529 turned 'mutate ONLY the files in your task's file map' from a sentence in the executor prompt into a PreToolUse write guard. These cases pin the declaration side \u2014 what `acs filemap set/show` accepts and how the enforced union accumulates across an iteration's parallel executor tasks. The guard's own allow/deny decisions are exercised in 09-hooks.json.",
+  "description": "MAR-529 turned 'mutate ONLY the files in your task's file map' from a sentence in the executor prompt into a PreToolUse write guard. These cases pin the DECLARATION side \u2014 what `acs filemap set/show` accepts, and how the enforced union accumulates across an iteration's parallel executor tasks.\n\nNOT COVERED: the guard's own allow/deny decisions. Driving them needs a PreToolUse hook envelope with an active executor record, which this harness does not construct. FILEMAP-006 records the declaration-side half of that seam; the enforcement half is an open gap.",
   "surface": "acs filemap",
   "covers": [
     "MAR-529"

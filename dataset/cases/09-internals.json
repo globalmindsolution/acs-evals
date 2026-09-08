@@ -286,8 +286,8 @@
     },
     {
       "id": "SESSIONEND-001",
-      "title": "the SessionEnd safety net runs clean on a session that ended with nothing in flight",
-      "note": "The abnormal-ending cleanup path must be a no-op when there is nothing to finalize \u2014 a non-zero exit here would break every ordinary session close.",
+      "title": "the SessionEnd safety net leaves a clean partition intact",
+      "note": "The abnormal-ending cleanup must be a no-op when nothing is in flight. Asserted on the partition rather than on exit status alone: an exit-code-only case would pass against a hook that did nothing, or against one that deleted the ticket.",
       "profile": "ticketed",
       "invoke": {
         "script": "dispatch.py",
@@ -296,7 +296,23 @@
         ]
       },
       "expect": {
-        "exit_code": 0
+        "exit_code": 0,
+        "after": [
+          {
+            "base": "ticket",
+            "path": "ticket.json",
+            "exists": true,
+            "json_subset": {
+              "id": "TKT-1",
+              "status": "open"
+            }
+          },
+          {
+            "base": "ticket",
+            "path": ".lock",
+            "exists": false
+          }
+        ]
       }
     }
   ]

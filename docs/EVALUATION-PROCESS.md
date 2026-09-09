@@ -175,25 +175,54 @@ escapes to a consumer.
 
 For a routing probe, edit `dataset/routing.json` and run `make generate`.
 
-## The second tier, and what this process does not cover
+## The other two tiers, and what this process does not cover
+
+### Tier 3 — skill quality, reliability, cost and time
+
+The process above gates **contracts**. It cannot tell you whether skills got
+less reliable, worse, more expensive or slower, because it runs no model. Tier 3
+does, and it is part of `make gate`:
+
+```bash
+make measure-plan   # what it will run and what it will cost — free
+make measure        # SPENDS MONEY; needs `claude` on PATH
+make perf           # judge it; pure, offline, re-runnable
+```
+
+`make perf` reports **UNMEASURED** and fails until a measurement exists. That is
+the design: absence is not a pass. Full rules, verdicts and limitations in
+[`PERFORMANCE.md`](PERFORMANCE.md).
+
+Triage differs from tier 1 in one way. An **absolute** failure — a routing
+probe that split, a run that did not complete, a run that ended carrying a
+blocking finding — is triaged exactly like a `major` or `critical` case here.
+A **relative** one — cost, time, iterations, coverage against a baseline — is
+currently a prompt to look rather than a defect, because the thresholds are not
+yet calibrated. Do not re-baseline a regression away to clear it; that is the
+tier-3 equivalent of re-recording a golden to hide a bug.
+
+### Tier 2 — `claude plugin eval` routing
 
 `evals/` holds `claude plugin eval` cases for skill routing. **They have never
 been executed** — the feature is early access and was not enabled on the
 account this dataset was built with, so the grader schema is authored from the
 CLI's `--help` output rather than a passing run.
 
-Until that is validated, the gate covers routing only as far as the
-deterministic `SKILL-*` cases go: every skill ships, carries a routing
-`description`, and declares the right `disable-model-invocation`. **Whether a
-real request routes to the right skill at runtime is not currently verified by
-anything in this repo.** Treat that as an open gap, not a covered area.
-
-To close it, once early access is enabled:
+This is no longer the gap it was. Tier 3 measures routing from the same
+`dataset/routing.json` prompts through plain `claude -p`, against a stated
+decision rule, with no early access needed. Tier 2 remains worth validating for
+its ablation support (`--ablation with-without`), which tier 3 does not do:
 
 ```bash
 claude plugin eval acs --case route-code --runs 1   # confirm the schema
 claude plugin eval acs --tag routing                # then the full tier
 ```
 
-Fix any schema mismatch in `runner/gen_plugin_eval.py`, regenerate, and add the
-tier to `make gate`.
+Fix any schema mismatch in `runner/gen_plugin_eval.py` and regenerate.
+
+### Still not covered by any tier
+
+How acs behaves on **real tickets**. Tier 3's pipeline scenarios run in a
+throwaway sandbox on a trivial change, so its cost and quality numbers are
+release-over-release deltas, not an estimate of what a consumer's ticket costs.
+Treat that as an open gap.

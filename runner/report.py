@@ -191,11 +191,14 @@ def render_markdown(doc):
     w("| Wall clock | %.1fs |" % t["seconds"])
     w("| Generated | %s |" % doc["generated_at"])
     w("")
-    w("Scope: the deterministic tier only. No model, no network, no cost. The "
-      "agentic routing tier (`evals/`, `claude plugin eval`) is authored but "
-      "has never been executed — it is early access and was not enabled on the "
-      "account this dataset was built with, so nothing in this report speaks "
-      "to routing behaviour at runtime.")
+    w("Scope: the deterministic tier only. No model, no network, no cost. This "
+      "report pins **contracts** — that the surfaces still emit what they were "
+      "recorded emitting. It says nothing about whether skills got less "
+      "reliable, worse, more expensive or slower: those are tier 3's subject "
+      "(`make measure && make perf`, see `docs/PERFORMANCE.md`), and a green "
+      "report here is not evidence about any of them. Routing at runtime is "
+      "likewise unmeasured here — tier 3 measures it; the tier-2 tree "
+      "(`evals/`, `claude plugin eval`) remains authored and never executed.")
     w("")
 
     w("## Coverage by surface")
@@ -632,12 +635,15 @@ footer code { font-size:.85em; }
   <div class="kpis">$kpis</div>
 
   <p class="scope"><strong>Scope.</strong> This report covers the
-  <strong>deterministic tier</strong> only — no model, no network, no cost. The
-  agentic routing tier (<code>evals/</code>, run by
-  <code>claude plugin eval</code>) is authored but has <strong>never been
-  executed</strong>: it is an early-access feature and was not enabled on the
-  account this dataset was built with. Nothing here speaks to how a real
-  request routes at runtime.</p>
+  <strong>deterministic tier</strong> only — no model, no network, no cost. It
+  pins <strong>contracts</strong>: that these surfaces still emit what they were
+  recorded emitting. It says <strong>nothing</strong> about whether skills got
+  less reliable, worse, more expensive or slower — those are tier 3's subject
+  (<code>make measure &amp;&amp; make perf</code>, see
+  <code>docs/PERFORMANCE.md</code>), and a green report here is not evidence
+  about any of them. Routing at runtime is unmeasured here too; tier 3 measures
+  it, while the tier-2 tree (<code>evals/</code>, run by
+  <code>claude plugin eval</code>) remains authored and never executed.</p>
 
   <section>
     <h2>Coverage by surface</h2>

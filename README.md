@@ -33,7 +33,14 @@ make gate
 `make gate` = **`eval`** (run the 337 deterministic cases) → **`check`**
 (assert both generated trees are in sync with their sources) → **`mutation`**
 (measure schema coverage, floor 50%) → **`report`** (render
-`results/report.md` and `results/report.html`). It stops at the first failure.
+`results/report.md` and `results/report.html`) → **`perf`** (judge the tier-3
+measurement of skill quality, reliability, cost and time). It stops at the
+first failure.
+
+`perf` fails with **UNMEASURED** until `make measure` has been run, and that is
+deliberate: a green contract gate says nothing about whether skills got worse,
+slower or more expensive, and this suite may not imply otherwise by having run
+nothing. `make gate-deterministic` is the tier-1-only path.
 
 ```
 make help      every target
@@ -43,6 +50,10 @@ make mutation  measure schema coverage by deleting each constraint
 make report    render the report from the last run
 make list      list every case, run nothing
 make record    DANGER — rewrite goldens from this build; read the diff
+make measure-plan  what tier 3 would run and what it would cost, free
+make measure       TIER 3 — run the scenario set; SPENDS MONEY
+make perf          judge the last measurement (pure; no model, no cost)
+make perf-test     self-test tier 3's decision rules
 ```
 
 | Document | What it covers |
@@ -67,12 +78,20 @@ checking the code; with it unset the runner resolves the newest *installed*
 build, which is what a consumer actually executes — that run is the only one
 that catches packaging drift.
 
-## Two tiers
+## Three tiers
 
 | Tier | Where | Runner | Cost | Status |
 |---|---|---|---|---|
-| **Deterministic** | `dataset/` | `runner/run_golden.py` | $0, no model, no network | **337 cases, all green** |
-| **Agentic (routing)** | `evals/` | `claude plugin eval` | paid sessions | authored, **never executed** — see below |
+| **1 — Deterministic** | `dataset/cases/` | `runner/run_golden.py` | $0, no model, no network | **337 cases, all green** |
+| **2 — Agentic (routing)** | `evals/` | `claude plugin eval` | paid sessions | authored, **never executed** — needs early access |
+| **3 — Skill performance** | `dataset/scenarios.json` | `runner/measure_skills.py` + `runner/perf_gate.py` | paid sessions to measure; $0 to judge | **built, never measured** — see [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) |
+
+Tier 1 asks whether the plumbing still emits the same bytes. **Tier 3 asks the
+four questions a release actually turns on** — did the skills get less
+reliable, worse, more expensive, or slower — because a build that made every
+skill twice as slow and three times as expensive passes all 337 tier-1 cases
+and prints PASSED. Tier 3 also measures routing through plain `claude -p`, so
+it does not wait on tier 2's early access.
 
 ### Tier 1 — deterministic (runs today)
 
@@ -232,7 +251,11 @@ regression either. Full triage guidance:
 Makefile                 the process, as commands — `make help`
 dataset/
   manifest.json          dataset version, target release, recorded-against build
-  routing.json           curated routing probes (source for evals/)
+  routing.json           curated routing probes (source for evals/ AND tier 3)
+  scenarios.json         tier 3's controlled experiment, versioned
+  thresholds.json        tier 3's declared gates, and what they are based on
+  measurement.schema.json  the shape of a tier-3 measurement
+  baselines/             one promoted measurement per gated release
   cases/*.json           the golden cases, grouped by surface
   fixtures/
     readiness/           18 recorded `gh pr view` documents
@@ -244,10 +267,14 @@ runner/
   jsonschema_mini.py     stdlib JSON Schema subset validator
   gen_plugin_eval.py     renders routing.json into evals/
   report.py              renders a run result into report.md + report.html
+  measure_skills.py      tier 3 collector — drives real sessions, records cost
+  perf_gate.py           tier 3 gate — pure; judges a measurement
+  test_perf_gate.py      self-test for tier 3's decision rules
 evals/
   routing/**/case.yaml   generated `claude plugin eval` cases
 docs/
   EVALUATION-PROCESS.md  roles, triage, re-recording, extending the dataset
+  PERFORMANCE.md         tier 3 — what it measures, its rules and its limits
   RELEASE-CHECKLIST.md   the eval steps of a release cut
 reports/                 the reviewed report for each gated release
 results/                 working output of a run (gitignored)

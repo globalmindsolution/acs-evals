@@ -37,7 +37,36 @@ Copy this into the release PR and tick it.
 - [ ] **The generated eval tree is in sync** (`make check`, included in
       `make gate`).
 
+- [ ] **Skill performance is measured, not assumed** (`make measure`, then
+      `make perf` — both included in `make gate`).
+
+      ```bash
+      make measure-plan     # what it will run and how many sessions, free
+      make measure          # SPENDS MONEY; needs `claude` on PATH
+      ```
+
+      Tier 3 answers the four questions tier 1 cannot: did skills get less
+      reliable, worse, more expensive, or slower. **UNMEASURED is a failing
+      state**, not a pass — see [`PERFORMANCE.md`](PERFORMANCE.md). If the
+      measurement cannot be taken for this cut, say so in the release notes
+      rather than letting a green tier-1 report imply it.
+
+- [ ] **Every absolute floor held.** Routing accuracy, run completion, and
+      no run finishing with an unresolved blocking finding. These block
+      regardless of calibration. A negative routing probe that auto-invoked is
+      `critical` and stops the cut outright.
+
+- [ ] **Relative findings triaged.** While thresholds are provisional these do
+      not block, but each cost, time, iteration or coverage regression gets a
+      decision: accepted and named in the changelog, or fixed.
+
 ## At the version bump
+
+- [ ] **Promote the measurement to a baseline.** Copy
+      `results/measurements.json` to `dataset/baselines/acs-<version>.json` —
+      but only if it is not marked `incomplete` and its findings were triaged.
+      A baseline recorded from a build with a known regression bakes that
+      regression in as the thing to beat.
 
 - [ ] **Re-baseline the dataset.** Set `recorded_against` in
       `dataset/manifest.json` to the version being released, and clear
@@ -81,7 +110,14 @@ Copy this into the release PR and tick it.
 
 ## Not covered by this checklist
 
-Runtime skill routing. The `evals/` tier that would verify it has never been
-executed — see the last section of
-[`EVALUATION-PROCESS.md`](EVALUATION-PROCESS.md). Do not record routing as
-verified in release notes on the strength of this gate alone.
+Tier 2, the `claude plugin eval` routing tree in `evals/`, has still never been
+executed — it needs early access. It is now **redundant for gating**: tier 3
+measures routing from the same `dataset/routing.json` prompts through plain
+`claude -p`, with a stated decision rule. Keep tier 2 for the day the feature
+opens up; do not treat its absence as a hole any more.
+
+What remains genuinely uncovered: how acs behaves on **real tickets**. Tier 3's
+pipeline scenarios run in a throwaway sandbox on a trivial change, so its cost
+and quality numbers are useful as release-over-release deltas and not as an
+estimate of what a consumer's ticket costs. See the limitations in
+[`PERFORMANCE.md`](PERFORMANCE.md).

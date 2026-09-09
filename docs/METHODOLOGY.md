@@ -17,10 +17,15 @@ release gate, and as a regression net during development.
   "right". Where a behaviour is known to contradict its own contract, it is
   pinned as a `known_divergence` and reported, precisely because the dataset
   cannot make that judgement itself.
-- **Whether acs is useful, or produces good code.** Nothing here evaluates
-  output quality.
-- **Runtime skill routing.** See *Threats to validity* below.
-- **Performance, cost, or token consumption.**
+- **Whether acs is useful, or produces good code.** Nothing in *this* tier
+  evaluates output quality. Tier 3 measures a proxy for it — verify iterations
+  to pass, achieved coverage, unresolved blocking findings — see
+  [`PERFORMANCE.md`](PERFORMANCE.md).
+- **Runtime skill routing.** Unverified *here*; tier 3 measures it against a
+  declared decision rule. See *Threats to validity* below.
+- **Performance, cost, or token consumption.** Out of scope for the
+  deterministic tier by construction — it runs no model. These are tier 3's
+  subject: [`PERFORMANCE.md`](PERFORMANCE.md).
 
 ## How expectations were produced
 
@@ -81,16 +86,21 @@ Treat the generated tier as change-detection, not validation.
 not enabled on the account this dataset was built with, so its case and grader
 schema is authored from the CLI's `--help` output rather than a passing run.
 
-What *is* verified is the routing **surface**: that all 25 skills ship, carry a
-description, and declare the right `disable-model-invocation` (`SKILL-*`).
-**Whether a real request reaches the right skill is currently pinned by
-nothing.** Do not record routing as verified on the strength of this gate.
+What *is* verified without a model is the routing **surface**: that all 25
+skills ship, carry a description, and declare the right
+`disable-model-invocation` (`SKILL-*`). **Whether a real request reaches the
+right skill is not pinned by the deterministic tier.** Do not record routing as
+verified on the strength of a tier-1 gate.
 
-When the tier is enabled, its decision rule needs stating before results are
-trusted. Routing is stochastic; `runs: 3` with no declared rule is not a
-criterion. A reasonable one — a probe passes if it routes on **all** runs, and a
-split result is a finding rather than a pass — should be written down and put in
-`RUBRIC.md` at that point.
+Tier 3 measures it without waiting for early access: `runner/measure_skills.py`
+drives the same `dataset/routing.json` prompts through plain `claude -p` with
+only the `Skill` tool allowed, killing the session at the first `Skill` call.
+Its decision rule is stated in [`PERFORMANCE.md`](PERFORMANCE.md) — a positive
+probe passes only if it routes on **all** runs, a split result is a finding, and
+a negative probe that auto-invokes even once is `critical`. That answers the
+"`runs: 3` with no declared rule is not a criterion" objection this section
+raised. **It has not been run yet**, so routing remains unmeasured in fact — but
+it is no longer unmeasurable.
 
 ### 3. The baseline is a moving target
 
@@ -113,7 +123,15 @@ The levels in [`RUBRIC.md`](RUBRIC.md) were assigned by the dataset's author
 against stated criteria, not derived from incident data. They are reviewable and
 should be argued with; a case in the wrong band is a defect in the gate.
 
-### 6. The harness and the dataset share an author
+### 6. Tier 3's thresholds are uncalibrated, and its corpus is three scenarios
+
+No tier-3 measurement has been taken, so `dataset/thresholds.json` carries
+`basis: provisional` and its relative gates cannot block a release — they report
+only. The pipeline corpus is three scenarios, so cost and quality findings
+generalise no further than the surfaces those three touch, and a sandbox run is
+not a consumer run. [`PERFORMANCE.md`](PERFORMANCE.md) lists these worst-first.
+
+### 7. The harness and the dataset share an author
 
 The same person wrote the cases and the runner that judges them, so a blind spot
 in one is likely mirrored in the other. `mutation_sweep.py` exists to reduce

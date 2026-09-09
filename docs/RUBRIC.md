@@ -116,6 +116,23 @@ Two conditions are reported alongside the verdict and are also blocking:
   would actually catch. Below 50%, a green run is weak evidence, and the gate
   says so.
 
+## Tier 3 has its own verdict, and its own reason
+
+This rubric grades the **deterministic** tier: severity answers "if this case
+fails on a released build, what can go wrong for a consumer" — that is, what
+*breaks*. It has nothing to say about whether skills got better, cheaper or
+faster, because tier 1 cannot see any of those.
+
+Tier 3 grades that, with the same three severities and one extra rule: an
+*absolute* floor (routing accuracy, run completion, unresolved blocking
+findings) blocks, while a *relative* threshold (cost, time, iterations,
+coverage) only reports until it has been calibrated against observed noise.
+The states and the reasoning are in [`PERFORMANCE.md`](PERFORMANCE.md).
+
+The two verdicts are reported side by side and neither subsumes the other. A
+build can be PASSED on contracts and BLOCKED on performance; that is not a
+contradiction, it is the point of having both.
+
 ## What this rubric does NOT do
 
 It does not weight cases into a single score. A percentage — "97% passed" —

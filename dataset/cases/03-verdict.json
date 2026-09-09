@@ -268,14 +268,7 @@
     },
     {
       "id": "VERDICT-009",
-      "title": "DIVERGENCE: `verdict show` does not enforce iteration freshness",
-      "known_divergence": {
-        "observed": "`acs verdict show --iteration 3` reports ok=true, passed=true for a document whose own `iteration` is 1.",
-        "expected_by_contract": "validate_verdict checks `iteration` when the caller supplies it, and MAR-527's stated rule is that iteration 1's clean verdict copied onto iteration 3's path is not iteration 3's verdict.",
-        "cause": "acs_commands.py cmd_verdict_show calls validate_verdict(doc, lens=..., ticket_id=...) \u2014 it passes neither `skill` nor `iteration`, so those two freshness checks never run at this call site.",
-        "blast_radius": "Read-only. The two call sites that decide anything DO pass all three: acs_lib/derive.py (verifier_passed, the field gate_create_pr reads) and acs_lib/lifecycle.py (the SubagentStop hook). So no gate is bypassed \u2014 but the coordinator-facing read command reports a stale verdict as a clean pass.",
-        "status": "pinned as observed on the build under test; if v0.4.10 wires the two arguments through, this case fails and should be flipped to expect exit 2."
-      },
+      "title": "FRESHNESS: `verdict show` refuses a verdict from another iteration",
       "files": [
         {
           "base": "ticket",
@@ -296,26 +289,23 @@
         ]
       },
       "expect": {
-        "exit_code": 0,
-        "stdout_json_subset": {
-          "ok": true,
-          "passed": true,
-          "errors": [],
-          "verdict": {
-            "iteration": 1
-          }
-        }
+        "exit_code": 2,
+        "stderr_contains": [
+          "not usable",
+          "verdict iteration is 1 but this is 3",
+          "a verdict is evidence only for the run that produced it"
+        ],
+        "stdout_excludes": [
+          "\"passed\"",
+          "\"ok\""
+        ]
       },
-      "severity": "critical"
+      "severity": "critical",
+      "note": "Was a known_divergence through v0.4.9: cmd_verdict_show called validate_verdict without `skill` or `iteration`, so a document whose own iteration was 1 read as a clean pass at iteration 3's path. MAR-573 passes both arguments through, closing it. The case now pins the rule instead of the gap \u2014 it asserts the refusal reaches stderr AND that no passing verdict leaks to stdout, because the original defect's harm was a body reporting passed:true, not the exit code alone."
     },
     {
       "id": "VERDICT-014",
-      "title": "DIVERGENCE: `verdict show` does not enforce skill freshness either",
-      "known_divergence": {
-        "observed": "`acs verdict show --skill code` accepts a document whose own `skill` is `docs-sync`.",
-        "cause": "The same missing arguments as VERDICT-009 \u2014 one fix closes both.",
-        "status": "pinned as observed; flip to exit 2 if v0.4.10 closes it."
-      },
+      "title": "FRESHNESS: `verdict show` refuses a verdict from another skill",
       "files": [
         {
           "base": "ticket",
@@ -336,17 +326,19 @@
         ]
       },
       "expect": {
-        "exit_code": 0,
-        "stdout_json_subset": {
-          "ok": true,
-          "passed": true,
-          "errors": [],
-          "verdict": {
-            "skill": "docs-sync"
-          }
-        }
+        "exit_code": 2,
+        "stderr_contains": [
+          "not usable",
+          "verdict skill is 'docs-sync' but this is 'code'",
+          "a verdict is evidence only for the run that produced it"
+        ],
+        "stdout_excludes": [
+          "\"passed\"",
+          "\"ok\""
+        ]
       },
-      "severity": "critical"
+      "severity": "critical",
+      "note": "The other axis of the same gap, closed by the same one-call change in MAR-573. Was a known_divergence through v0.4.9."
     },
     {
       "id": "VERDICT-010",

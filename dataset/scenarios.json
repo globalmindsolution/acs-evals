@@ -1,5 +1,5 @@
 {
-  "scenario_set_version": "1.3.0",
+  "scenario_set_version": "1.4.0",
   "description": "Tier 3's controlled experiment: the fixed set of runs executed against every gated build so quality, reliability, cost and time are comparable release over release. Changing this file changes the experiment — bump scenario_set_version, and every baseline recorded under the old version becomes incomparable by construction.",
   "decision_rules": {
     "routing": "A positive probe passes only if it routes to the expected skill on EVERY run. A split result (some runs route, some do not) is a finding, never a pass — routing is stochastic, so one green run is not evidence. A negative probe passes only if it auto-invokes the skill on NO run.",
@@ -13,7 +13,7 @@
     "timeout_seconds": 120
   },
   "pipeline": {
-    "note": "End-to-end runs that DO execute skill bodies. These are the expensive half — deliberately few, deliberately representative. Each names the sandbox profile it starts from, the request, and the ledger paths the collector reads afterwards for quality signals.",
+    "note": "End-to-end runs that DO execute skill bodies. These are the expensive half — deliberately few, deliberately representative. Each names the sandbox profile it starts from, the request, and the ledger paths the collector reads afterwards for quality signals. Scenarios on the app profiles are the expensive end — a full /acs:code cycle each, twice for the docs-sync one (its setup prompt is that cycle).",
     "runs_per_scenario": 3,
     "scenarios": [
       {
@@ -54,7 +54,40 @@
           "cost",
           "time"
         ],
-        "why": "Runs after /acs:code and re-derives its own changeset. A cheap skill that quietly turns expensive is the regression this catches."
+        "why": "Runs after /acs:code and re-derives its own changeset. A cheap skill that quietly turns expensive is the regression this catches. 1.4.0: runs after a real /acs:code session in the same sandbox (setup_prompts) — the docs-sync gate requires a completed code step, so the 1.0.0-1.3.0 form could only ever fail at the gate.",
+        "setup_prompts": [
+          "TKT-1 is ready to implement. Please implement it."
+        ]
+      },
+      {
+        "id": "PIPE-code-app",
+        "skill": "acs:code",
+        "profile": "app-ticketed",
+        "prompt": "TKT-1 is ready to implement. Please implement it.",
+        "timeout_seconds": 2400,
+        "measures": [
+          "reliability",
+          "cost",
+          "time",
+          "quality"
+        ],
+        "why": "/acs:code on the fixture app: 14 modules, 43 tests, an 85% coverage floor that can bite, docs the change makes stale, 32 commits of history for the regression-risk dimension, and a change under orders/payments/** so the high_stakes_paths trigger should record an upward escalation in code-state.json. The two-line app.py scenarios could reach none of that."
+      },
+      {
+        "id": "PIPE-docs-sync-app",
+        "skill": "acs:docs-sync",
+        "profile": "app-ticketed",
+        "setup_prompts": [
+          "TKT-1 is ready to implement. Please implement it."
+        ],
+        "prompt": "The implementation for TKT-1 has landed on this branch. Bring the docs up to date with it.",
+        "timeout_seconds": 1200,
+        "measures": [
+          "reliability",
+          "cost",
+          "time"
+        ],
+        "why": "docs-sync with real docs to sync: docs/api.md states the API is read-and-create only and docs/architecture.md describes the data flow the ticket changes, so a correct run must edit both. The most judgment-heavy step and, before the fixture, the least evaluated."
       }
     ]
   },
@@ -64,5 +97,7 @@
     "acs:merge-pr": "Merges. Not run against anything real.",
     "acs:release": "Opens a release PR. Same reason.",
     "doc-bootstrap skills": "create-prd/architecture/principles/standards/quality/operations each write a large doc set; one run each would dominate the tier's cost while regressing least. Routing is measured; bodies are not."
-  }
+  },
+  "fixture_hash": "6fecba231b91b0d3",
+  "fixture_note": "dataset/fixtures/app is part of the experiment: `fixture_hash` covers every byte of its tree and history, `make check` fails when this value is stale, and a changed fixture therefore forces a scenario_set_version bump. Routing baselines survive a fixture change (set_hashes are per half); pipeline baselines do not."
 }

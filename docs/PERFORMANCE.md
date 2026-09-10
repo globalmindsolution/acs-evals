@@ -139,7 +139,23 @@ set that is **159 sessions**: 30 routing probes (27 routing, 3 controls) × 5
 runs (each a few seconds, killed at the first `Skill` call, or at `init` for
 the explicit probes and controls) plus 3 pipeline scenarios × 3 runs (one of
 which is a full `/acs:code` TDD cycle). `make measure-routing` runs the cheap
-half alone.
+half alone. Scenario set 1.4.0 adds two scenarios on the fixture app
+(`PIPE-code-app`, `PIPE-docs-sync-app`; 165 sessions in all) and gives
+`PIPE-docs-sync` the `/acs:code` setup prompt its gate requires — a
+scenario whose measured skill needs prior pipeline state names that state's
+prompts in `setup_prompts`, run first in the same sandbox and recorded on the
+run's `setup` list, never folded into the measured cost or time.
+
+## The fixture app
+
+The pipeline scenarios on the `app` profiles run on `dataset/fixtures/app`
+(`runner/fixture_app.py`): a real order-management service with tests, a
+coverage floor of 85 that can bite, docs the ticket makes stale, 32 commits of
+history including a revert, and `orders/payments/**` under `high_stakes_paths`
+so the stakes trigger has something to fire on. Its content is hashed into
+`scenarios.json` (`fixture_hash`), and measurements carry `set_hashes` for the
+routing and pipeline halves separately, so a routing baseline is not thrown
+away when the fixture or a pipeline scenario changes.
 
 The pipeline set is deliberately three scenarios, not twenty-five.
 `scenarios.json` names every skill it excludes and why, so the gap is

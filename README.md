@@ -208,10 +208,41 @@ integers nudged), the CLI cases run against it, and a mutant counted killed
 when any case fails. It is slow (~15 s per mutant; 705 sites across eight
 `acs_lib` modules), so it samples — `MUTANTS=0 make mutation-cli` runs every
 site — and it lists each survivor for a human to read, because a survivor is a
-hole or an equivalent mutant and the tool cannot tell which. The measured
-number lives in `results/mutation-cli.json` and in the release report; it
-replaces the hand-run spot check (6 of 7 decision-table mutations caught) that
-used to stand in for one.
+hole or an equivalent mutant and the tool cannot tell which. It replaces the
+hand-run spot check (6 of 7 decision-table mutations caught) that used to stand
+in for a number.
+
+Current: **14/40 killed (35%) on a 40-mutant sample** (seed 2026, acs 0.4.9,
+`reports/mutation-cli-acs-0.4.9.json`) — `verdict.py` 4/5 and `readiness.py`
+2/2, but `derive.py` 0/2, `gates.py` 0/4 and `lanes.py` 1/7. The 26 survivors
+are listed in that file; several are plain holes (the file-map deny exit code,
+the lock's holder-process-live answer, `gates.py`'s epic/ticket branches), and
+each is a case to add by driving the surface and recording what it does.
+
+## The fixture app
+
+`dataset/fixtures/app/` is a small, real codebase for the behavioural
+scenarios to run on: an order-management service — 14 modules, 43 tests at 99%
+coverage, a `docs/` tree with two ADRs, a `payments/` path under
+`high_stakes_paths`, and a 32-commit history with a feature commit and its
+revert — replayed by `runner/fixture_app.py` with fixed author and dates so
+every build has identical SHAs. The two-line `app.py` the paid scenarios used
+to run against could reach none of what the plugin's quality mechanisms
+actually do: docs-sync had no docs, the coverage gate never bit,
+regression-risk had no history, no path could escalate stakes.
+
+The fixture is part of the experiment: `fixture_hash` in `scenarios.json`
+covers every byte of its tree and history, `make check` fails when it is stale,
+and a changed fixture forces a `scenario_set_version` bump. Baselines are
+comparable per half (`set_hashes`): a routing baseline survives a fixture or
+pipeline-scenario change, a pipeline baseline does not. The `app` and
+`app-ticketed` sandbox profiles build it; `PIPE-code-app` and
+`PIPE-docs-sync-app` run `/acs:code` and `/acs:docs-sync` on it.
+
+```bash
+make fixture-selftest                        # build it in a temp dir, run its tests
+python3 runner/fixture_app.py build <dir>    # materialise it somewhere to look at
+```
 
 `make verifier-rates WORKSPACE=<workspace>/<repo_id>` is the free reading on
 the plugin's quality mechanism: it tallies every verdict the code-verifier ever

@@ -122,7 +122,26 @@ SETTINGS = {
     "merge_strategy": "squash",
 }
 
-PROFILES = ("bare", "seeded", "ticketed", "epic")
+PROFILES = ("bare", "seeded", "ticketed", "epic", "app", "app-ticketed")
+
+#: Settings for the fixture-app profiles: a real coverage floor the gate can
+#: bite on, a payments path under high_stakes_paths so the stakes trigger can
+#: fire, and the fixture's own test command.
+APP_SETTINGS = dict(SETTINGS, test_coverage_percent=85,
+                    high_stakes_paths=["orders/payments/**"],
+                    tests={"command": "python3 -m coverage run -m unittest discover -s tests "
+                                      "&& python3 -m coverage report --fail-under=$ACS_COVERAGE"})
+
+APP_TICKET = {
+    "title": "Let the API confirm and pay an order, charging through the gateway with one retry",
+    "description": ("Today the HTTP API can only create a draft order; confirming and paying are CLI-only "
+                    "(docs/api.md says so). Add POST /orders/<id>/confirm and POST /orders/<id>/pay to "
+                    "orders/api.py, backed by OrderService.confirm/pay. When the gateway raises a timeout "
+                    "during pay, retry the charge exactly once with a fresh idempotency key that includes "
+                    "an attempt number, so a retried charge can never double-charge (see docs/adr/0002). "
+                    "Update docs/api.md and the data-flow section of docs/architecture.md to match. "
+                    "Keep the coverage floor in .coveragerc green."),
+}
 
 _GIT_ENV = {
     "GIT_CONFIG_GLOBAL": os.devnull,
@@ -140,7 +159,10 @@ class Sandbox:
     Profiles stack: ``bare`` is a git repo with settings and nothing else;
     ``seeded`` adds the reconciled ``counters.json`` that lets the first
     allocation mint ``TKT-1``; ``ticketed`` mints that task; ``epic`` mints a
-    needs_design epic instead.
+    needs_design epic instead. ``app`` is the fixture app (runner/fixture_app.py:
+    a real codebase with tests, docs, a payments path and 32 commits of history)
+    plus the reconciled counter; ``app-ticketed`` mints a task on it whose
+    implementation touches the API, the payments path and the docs.
     """
 
     def __init__(self, build, profile="bare", keep=False):
@@ -163,6 +185,8 @@ class Sandbox:
                        env=dict(os.environ, **_GIT_ENV))
 
     def _build(self):
+        if self.profile in ("app", "app-ticketed"):
+            return self._build_app()
         os.makedirs(os.path.join(self.repo, ".acs"))
         os.makedirs(self.partition)
         with open(os.path.join(self.repo, ".acs", "settings.json"), "w") as fh:
@@ -186,6 +210,24 @@ class Sandbox:
         elif self.profile == "epic":
             self.ticket_id = self._mint("Checkout revamp", "epic",
                                         "--size", "large", "--stakes", "high")
+
+    def _build_app(self):
+        from fixture_app import build as build_fixture  # runner/ is on sys.path
+        build_fixture(self.repo)
+        os.makedirs(self.partition)
+        os.makedirs(os.path.join(self.repo, ".acs"))
+        with open(os.path.join(self.repo, ".acs", "settings.json"), "w") as fh:
+            json.dump(APP_SETTINGS, fh, indent=2, sort_keys=True)
+        self._git("add", "-A")
+        self._git("commit", "-qm", "Configure acs")
+        with open(os.path.join(self.partition, "counters.json"), "w") as fh:
+            json.dump({"reconciled": True, "seed_source": "explicit-user",
+                       "seeded_at": "2026-01-01T00:00:00Z", "next": 1},
+                      fh, indent=2)
+        if self.profile == "app-ticketed":
+            self.ticket_id = self._mint(APP_TICKET["title"], "task",
+                                        "--description", APP_TICKET["description"],
+                                        "--size", "small", "--stakes", "normal")
 
     def _mint(self, title, kind, *extra):
         out = self.run("new-ticket.py", "--title", title, "--type", kind, *extra)

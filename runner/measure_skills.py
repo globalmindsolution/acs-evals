@@ -41,6 +41,7 @@ Two measurement notes that decide how the numbers may be read:
 
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import shutil
@@ -55,6 +56,17 @@ from perf_gate import summarize  # noqa: E402
 
 SCENARIOS = os.path.join(DATASET, "scenarios.json")
 ROUTING = os.path.join(DATASET, "routing.json")
+
+
+def set_hashes(scenarios, probes):
+    """Content hashes of the two halves of the experiment, so a baseline for
+    one half stays comparable when only the other half changes."""
+    def digest(obj):
+        return hashlib.sha256(json.dumps(obj, sort_keys=True,
+                                         separators=(",", ":")).encode()).hexdigest()[:16]
+    return {"routing": digest(probes),
+            "pipeline": digest({"scenarios": scenarios["pipeline"]["scenarios"],
+                                "fixture_hash": scenarios.get("fixture_hash")})}
 
 PIPELINE_TOOLS = ("Bash", "Read", "Write", "Edit", "Glob", "Grep", "Task",
                   "TodoWrite", "Skill")
@@ -306,11 +318,28 @@ def measure_pipeline(build, scenarios, env, limit=None):
             # A fresh sandbox per run: a second run reusing the first's
             # partition would measure resumption, not the skill.
             with Sandbox(build, profile=scenario["profile"]) as sb:
-                prompt = scenario["prompt"]
-                if sb.ticket_id:
-                    prompt = prompt.replace("TKT-1", sb.ticket_id)
-                run = session_once(prompt, sb.repo,
-                                   scenario.get("timeout_seconds", 1800), env)
+                def fill(text):
+                    return text.replace("TKT-1", sb.ticket_id) if sb.ticket_id else text
+                # Setup prompts bring the sandbox to the state the measured
+                # skill needs (docs-sync after a real /acs:code run, say).
+                # Their cost and time are recorded separately, never folded
+                # into the measured run.
+                setup = []
+                for text in scenario.get("setup_prompts", []):
+                    s_run = session_once(fill(text), sb.repo,
+                                         scenario.get("timeout_seconds", 1800), env)
+                    setup.append(s_run)
+                    if not s_run["ok"]:
+                        break
+                if setup and not setup[-1]["ok"]:
+                    run = {"ok": False, "seconds": 0.0, "cost_usd": None,
+                           "turns": None, "error": "setup prompt failed: %s"
+                           % (setup[-1].get("error") or "session not ok")}
+                else:
+                    run = session_once(fill(scenario["prompt"]), sb.repo,
+                                       scenario.get("timeout_seconds", 1800), env)
+                if setup:
+                    run["setup"] = setup
                 ledger = read_ledger(sb, scenario["skill"])
             run["status"] = ledger["status"]
             run["stop_reason"] = ledger["stop_reason"]
@@ -465,6 +494,7 @@ def main():
                                 .strftime("%Y-%m-%dT%H:%M:%SZ"),
         "build": {"version": build.version, "root": build.root},
         "scenario_set_version": scenarios["scenario_set_version"],
+        "set_hashes": set_hashes(scenarios, all_probes),
         "scope": scope,
         "environment": {"claude_cli_version": claude_version(),
                         "host": sys.platform,

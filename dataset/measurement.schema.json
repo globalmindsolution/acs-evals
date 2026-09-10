@@ -303,6 +303,13 @@
                     "unmeasured"
                   ],
                   "description": "How a routing run was decided: the first Skill tool_use (model routing), the init event's slash_commands list (CLI registration, explicit probes only), or unmeasured when an explicit probe's stream reported no registration list — a miss, never a pass."
+                },
+                "setup": {
+                  "type": "array",
+                  "description": "Sessions run before the measured one to bring the sandbox to the state the skill needs; their cost and time are never folded into the run.",
+                  "items": {
+                    "type": "object"
+                  }
                 }
               }
             }
@@ -368,6 +375,18 @@
         "pipeline"
       ],
       "description": "What the run set out to measure. `incomplete` says whether it finished that; a routing-scoped run that finished is whole, not half, and may be promoted as a routing-scoped baseline."
+    },
+    "set_hashes": {
+      "type": "object",
+      "description": "Content hashes of the two halves of the experiment (routing probes; pipeline scenarios + fixture). A baseline is comparable when the halves it covers are unchanged.",
+      "properties": {
+        "routing": {
+          "type": "string"
+        },
+        "pipeline": {
+          "type": "string"
+        }
+      }
     }
   },
   "$defs": {

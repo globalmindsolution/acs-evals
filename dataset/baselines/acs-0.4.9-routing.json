@@ -2164,7 +2164,7 @@
     }
   ],
   "scope": "routing",
-  "scope_note": "Recorded by the routing-only collector at commit 40e40df, before `scope` existed and while routing-only runs were marked incomplete by construction. Re-derived under the 0824379 rule from this document's own probes: scope routing, 30/30 probes with 5/5 runs, no probe filter, pre-flight ok \u2014 a whole routing-scoped measurement, promotable as acs-0.4.9-routing.json. Composed for scenario set 1.3.0: the 29 probes whose prompts 1.3.0 did not change carry their 1.2.0 runs unchanged; ROUTE-ship carries 5 fresh runs under its 1.3.0 prompt (generated_at of those runs: 2026-09-10T06:10:52Z).",
+  "scope_note": "Recorded by the routing-only collector at commit 40e40df, before `scope` existed and while routing-only runs were marked incomplete by construction. Re-derived under the 0824379 rule from this document's own probes: scope routing, 30/30 probes with 5/5 runs, no probe filter, pre-flight ok \u2014 a whole routing-scoped measurement, promotable as acs-0.4.9-routing.json. Composed for scenario set 1.3.0: the 29 probes whose prompts 1.3.0 did not change carry their 1.2.0 runs unchanged; ROUTE-ship carries 5 fresh runs under its 1.3.0 prompt (generated_at of those runs: 2026-09-10T06:10:52Z). set_hashes were added retroactively when per-half hashing landed: routing 0fba201a8d3810eb (unchanged since this run), pipeline 076ae2ed179ff05a (the 1.3.0 pipeline set).",
   "triage": {
     "reviewed": "2026-09-10, before promotion",
     "findings": [
@@ -2184,5 +2184,9 @@
         "note": "0/5 under the 1.2.0 prompt; the diagnostic session showed the model naming acs:ship and asking for the request \u2014 the prompt shipped nothing. Re-measured 5/5 under the 1.3.0 prompt."
       }
     ]
+  },
+  "set_hashes": {
+    "routing": "0fba201a8d3810eb",
+    "pipeline": "076ae2ed179ff05a"
   }
 }

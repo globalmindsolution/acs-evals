@@ -68,7 +68,9 @@ against the copy through `ACS_PLUGIN_ROOT`, and counts the mutant killed if any
 case fails. It runs the unmutated copy first as a control and refuses to report
 a number when that fails. The number is a **kill rate over a seeded sample**
 (705 sites across eight modules at 0.4.9; ~15 s per mutant, so the default
-sample is 40): quote it with its sample size, and read the survivors it lists —
+sample is 40). First measurement, 2026-09-10: **14/40 killed (35%)** on the
+40-mutant sample, `derive.py` and `gates.py` at zero — quote it with its sample
+size, and read the survivors it lists —
 a survivor is a hole or an equivalent mutant, and the tool cannot tell which.
 This replaces the hand-run spot check of seven decision-table mutations (six
 caught) that used to stand in for a measurement here.

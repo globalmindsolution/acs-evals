@@ -387,14 +387,41 @@ def pick_baseline(measurement, explicit):
         if not cands:
             return None, None
         base = load(cands[-1])
-    want = measurement.get("scenario_set_version")
-    got = (base or {}).get("scenario_set_version")
-    if base is not None and want != got:
-        return None, ("baseline %s was recorded under scenario set %s, this "
-                      "measurement under %s — not comparable" % (
-                          (base.get("build") or {}).get("version", "?"),
-                          got, want))
+    reason = incomparable(measurement, base)
+    if reason:
+        return None, reason
     return base, None
+
+
+def incomparable(measurement, base):
+    """Why `base` cannot be compared against `measurement`, or None.
+
+    When both documents carry `set_hashes`, comparability is decided per half:
+    a routing-scoped baseline needs only the routing half unchanged, a
+    pipeline-scoped one only the pipeline half, a full one both — so adding a
+    pipeline scenario does not throw away a routing baseline. Documents
+    without hashes fall back to the scenario_set_version label.
+    """
+    if base is None:
+        return None
+    mh, bh = measurement.get("set_hashes"), base.get("set_hashes")
+    if mh and bh:
+        scope = base.get("scope", "full")
+        halves = {"routing": ["routing"], "pipeline": ["pipeline"]}.get(scope, ["routing", "pipeline"])
+        stale = [h for h in halves if mh.get(h) != bh.get(h)]
+        if stale:
+            return ("baseline %s covers the %s half, whose content changed since it was "
+                    "recorded (%s) — not comparable"
+                    % ((base.get("build") or {}).get("version", "?"),
+                       " and ".join(stale), ", ".join("%s %s -> %s" % (h, bh.get(h), mh.get(h)) for h in stale)))
+        return None
+    want = measurement.get("scenario_set_version")
+    got = base.get("scenario_set_version")
+    if want != got:
+        return ("baseline %s was recorded under scenario set %s, this "
+                "measurement under %s — not comparable" % (
+                    (base.get("build") or {}).get("version", "?"), got, want))
+    return None
 
 
 def glob_json(directory):

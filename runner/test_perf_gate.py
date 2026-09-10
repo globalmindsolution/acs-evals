@@ -153,6 +153,30 @@ class TestAbsoluteGates(unittest.TestCase):
         self.assertEqual(state, "pass")
         self.assertIn("routing-scoped", detail)
 
+    def test_a_routing_baseline_survives_a_pipeline_change(self):
+        m = {"probes": [routing()], "set_hashes": {"routing": "r1", "pipeline": "p2"}}
+        base = {"probes": [routing()], "scope": "routing",
+                "set_hashes": {"routing": "r1", "pipeline": "p1"}}
+        self.assertIsNone(pg.incomparable(m, base))
+
+    def test_a_routing_baseline_is_refused_when_the_probes_changed(self):
+        m = {"probes": [routing()], "set_hashes": {"routing": "r2", "pipeline": "p1"}}
+        base = {"probes": [routing()], "scope": "routing",
+                "set_hashes": {"routing": "r1", "pipeline": "p1"}}
+        self.assertIn("routing half", pg.incomparable(m, base))
+
+    def test_a_full_baseline_needs_both_halves_unchanged(self):
+        m = {"probes": [routing()], "set_hashes": {"routing": "r1", "pipeline": "p2"}}
+        base = {"probes": [routing()], "scope": "full",
+                "set_hashes": {"routing": "r1", "pipeline": "p1"}}
+        self.assertIn("pipeline half", pg.incomparable(m, base))
+
+    def test_documents_without_hashes_fall_back_to_the_version_label(self):
+        m = {"probes": [routing()], "scenario_set_version": "1.1.0"}
+        base = {"probes": [routing()], "scenario_set_version": "1.0.0"}
+        self.assertIn("not comparable", pg.incomparable(m, base))
+        self.assertIsNone(pg.incomparable(m, dict(base, scenario_set_version="1.1.0")))
+
     def test_a_clean_first_measurement_is_uncompared_never_passed(self):
         m = measurement([routing(), pipeline()])
         f = pg.compare(m, None, PROVISIONAL)

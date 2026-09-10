@@ -70,7 +70,12 @@ a number when that fails. The number is a **kill rate over a seeded sample**
 (705 sites across eight modules at 0.4.9; ~15 s per mutant, so the default
 sample is 40). First measurement, 2026-09-10: **14/40 killed (35%)** on the
 40-mutant sample, `derive.py` and `gates.py` at zero — quote it with its sample
-size, and read the survivors it lists —
+size, and read the survivors it lists. Reading them is what the number is for:
+the first sweep's survivors in the file-map guard and the lock's same-host
+regime became `12-filemap-guard` (15 cases) and `LOCK-008`–`011`, recorded
+from the build the way every case is, and `mutation_cli.py --site` then showed
+the mutants at those sites killed (12 of 13; the one left is equivalent for
+every input a record can carry) —
 a survivor is a hole or an equivalent mutant, and the tool cannot tell which.
 This replaces the hand-run spot check of seven decision-table mutations (six
 caught) that used to stand in for a measurement here.

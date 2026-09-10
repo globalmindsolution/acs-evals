@@ -30,7 +30,7 @@ export ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs   # the build being rel
 make gate
 ```
 
-`make gate` = **`eval`** (run the 337 deterministic cases) → **`check`**
+`make gate` = **`eval`** (run the 356 deterministic cases) → **`check`**
 (assert both generated trees are in sync with their sources) → **`mutation`**
 (measure schema coverage, floor 50%) → **`report`** (render
 `results/report.md` and `results/report.html`) → **`perf`** (judge the tier-3
@@ -70,7 +70,7 @@ golden is re-recorded deliberately, and **minor** drift is triage rather than a
 hold — so `make gate` exits non-zero on the first two and zero on the third.
 
 Latest report: [`reports/acs-v0.4.10-gate.md`](reports/acs-v0.4.10-gate.md) —
-**337/337 passed**, 2 known divergences, against acs `0.4.9` (the pre-`v0.4.10`
+**356/356 passed**, 0 known divergences, against acs `0.4.9` (the pre-`v0.4.10`
 unreleased tree).
 
 Run it **both ways** before a release. With `ACS_PLUGIN_ROOT` set you are
@@ -82,14 +82,14 @@ that catches packaging drift.
 
 | Tier | Where | Runner | Cost | Status |
 |---|---|---|---|---|
-| **1 — Deterministic** | `dataset/cases/` | `runner/run_golden.py` | $0, no model, no network | **337 cases, all green** |
+| **1 — Deterministic** | `dataset/cases/` | `runner/run_golden.py` | $0, no model, no network | **356 cases, all green** |
 | **2 — Agentic (routing)** | `evals/` | `claude plugin eval` | paid sessions | authored, **never executed** — needs early access |
 | **3 — Skill performance** | `dataset/scenarios.json` | `runner/measure_skills.py` + `runner/perf_gate.py` | paid sessions to measure; $0 to judge | **built, never measured** — see [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) |
 
 Tier 1 asks whether the plumbing still emits the same bytes. **Tier 3 asks the
 four questions a release actually turns on** — did the skills get less
 reliable, worse, more expensive, or slower — because a build that made every
-skill twice as slow and three times as expensive passes all 337 tier-1 cases
+skill twice as slow and three times as expensive passes all 356 tier-1 cases
 and prints PASSED. Tier 3 also measures routing through plain `claude -p`, so
 it does not wait on tier 2's early access.
 
@@ -146,7 +146,7 @@ ship, carry a routing `description`, and declare the right
 
 ## What the dataset covers
 
-337 deterministic cases across the surfaces v0.4.10 changed **and** the pipeline
+356 deterministic cases across the surfaces v0.4.10 changed **and** the pipeline
 spine every release depends on.
 
 | Cases | Group | What it pins |
@@ -155,13 +155,14 @@ spine every release depends on.
 | 18 | `02-readiness` | merge-pr's four readiness dimensions replayed from recorded `gh pr view` documents (MAR-524) |
 | 15 | `03-verdict` | the verifier verdict's derived-`passed` invariant, completeness, freshness, lens merge (MAR-527) |
 | 8 | `04-filemap` | the executor file map's declaration side and its accumulating union (MAR-529) |
-| 7 | `05-lock` | lock staleness bases and the audited `force-unlock` (MAR-530) |
+| 11 | `05-lock` | lock staleness bases — the no-signal age timeout and the same-host liveness probe — the audited `force-unlock`, and skill-start's two refusal messages (MAR-530) |
 | 45 | `06-gates` | all 15 gated skills × 3 workspace states — the pipeline ordering, and the reason each refusal gives |
 | 12 | `07-spine` | ticket minting, the fail-closed id counter, settings resolution, ticket read/write |
 | 35 | `08-schemas` | the 12 shipped JSON schemas — the accept seeds, and the reject cases that carry judgement |
 | 12 | `09-internals` | PR conventions, doc structure lint, status line, metrics aggregate, SessionEnd |
 | 25 | `10-skills` | every skill's shipped routing surface |
 | 128 | `11-schema-constraints` | **generated** — one reject case per reachable schema constraint |
+| 15 | `12-filemap-guard` | the file-map deny control as the PreToolUse hook runs it: nine fail-open scope answers, four fail-closed denials, the stop-attempt cap edge (MAR-529) |
 
 Tickets covered: MAR-402, MAR-520 – MAR-530.
 

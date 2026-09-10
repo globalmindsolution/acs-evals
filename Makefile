@@ -35,7 +35,7 @@ gate-deterministic: eval check mutation report ## The deterministic tier only �
 	@printf '\nDeterministic tier complete. This says NOTHING about skill\n'
 	@printf 'quality, reliability, cost or time — see docs/PERFORMANCE.md.\n'
 
-eval: ## Run the deterministic tier (337 cases, zero cost, no model)
+eval: ## Run the deterministic tier (356 cases, zero cost, no model)
 	$(PYTHON) runner/run_golden.py --json $(JSON)
 
 measure: ## TIER 3 — run the controlled scenario set (SPENDS MONEY; needs `claude`)

@@ -55,7 +55,7 @@ DEFAULT_MODULES = ("derive.py", "verdict.py", "readiness.py", "gates.py",
 CLI_CASE_GLOBS = ("GATE-*", "LANE-*", "READY-*", "VERDICT-*", "STAKES-*",
                   "FILEMAP-*", "LOCK-*", "TICKET-*", "MINT-*", "PRCONV-*",
                   "SLUG-*", "STRUCT-*", "CONTEXT-*", "STATUS-*", "METRICS-*",
-                  "FANOUT-*", "DOCTOR-*", "SESSIONEND-*")
+                  "FANOUT-*", "DOCTOR-*", "SESSIONEND-*", "GUARD-*")
 
 _NEGATE = {ast.Eq: ast.NotEq, ast.NotEq: ast.Eq, ast.Lt: ast.GtE,
            ast.GtE: ast.Lt, ast.Gt: ast.LtE, ast.LtE: ast.Gt,
@@ -225,7 +225,7 @@ def run_cli_tier(build_root, case_globs, timeout=900):
     return code, failed, round(time.time() - started, 1)
 
 
-def sweep(build, modules, max_mutants, seed, case_globs, log=print):
+def sweep(build, modules, max_mutants, seed, case_globs, log=print, sites=None):
     copy_root = tempfile.mkdtemp(prefix="acs-mutant-")
     shutil.rmtree(copy_root)
     shutil.copytree(build.root, copy_root,
@@ -252,7 +252,14 @@ def sweep(build, modules, max_mutants, seed, case_globs, log=print):
         log("control run passed in %.0fs; %d mutation site(s) across %d module(s)"
             % (secs, total_sites, len(modules)))
 
-        picked = sample_sites(sites_by_module, max_mutants, seed)
+        if sites:
+            wanted = {(m, int(l)) for m, l in (s.split(":", 1) for s in sites)}
+            picked = [(m, s) for m in sorted(sites_by_module) for s in sites_by_module[m]
+                      if (m, s["lineno"]) in wanted]
+            if not picked:
+                raise BuildError("no mutation site matches %s" % ", ".join(sites))
+        else:
+            picked = sample_sites(sites_by_module, max_mutants, seed)
         log("running %d mutant(s)%s\n"
             % (len(picked), "" if len(picked) == total_sites
                else " (seed %d)" % seed))
@@ -310,6 +317,9 @@ def main():
                     help="exit 1 if the kill rate falls below this (0..1)")
     ap.add_argument("--list", action="store_true",
                     help="list mutation sites and exit, running nothing")
+    ap.add_argument("--site", action="append", metavar="MODULE:LINE",
+                    help="run only the mutants at these sites (repeatable); the way to "
+                         "prove a survivor is now killed after adding a case")
     ap.add_argument("--out", default=os.path.join(REPO_ROOT, "results", "mutation-cli.json"))
     args = ap.parse_args()
 
@@ -335,7 +345,7 @@ def main():
     started = time.time()
     try:
         results, total_sites = sweep(build, modules, args.max_mutants, args.seed,
-                                     CLI_CASE_GLOBS)
+                                     CLI_CASE_GLOBS, sites=args.site)
     except BuildError as exc:
         print("mutation-cli: %s" % exc, file=sys.stderr)
         return 2

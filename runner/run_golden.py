@@ -23,6 +23,8 @@ import glob
 import json
 import os
 import re
+import socket
+import subprocess
 import sys
 import time
 
@@ -40,7 +42,7 @@ def RUBRIC_VERDICT(sev_failed):
 
     A `minor` failure is drift to triage, not a reason to hold a release; a
     `critical` one is never accepted for a cut. Keeping the rule here — and in
-    the exit status — is what stops "337/337" from being the only thing anyone
+    the exit status — is what stops "356/356" from being the only thing anyone
     reads.
     """
     if sev_failed["critical"]:
@@ -204,10 +206,23 @@ def expand(token, sb):
         return str(token)
     if token.startswith("{{fixture:") and token.endswith("}}"):
         return os.path.join(FIXTURES, token[len("{{fixture:"):-2])
-    return (token.replace("{{repo}}", sb.repo)
-                 .replace("{{ws}}", sb.partition)
-                 .replace("{{ticket_dir}}", sb.ticket_dir())
-                 .replace("{{ticket}}", sb.ticket_id or ""))
+    out = (token.replace("{{repo}}", sb.repo)
+                .replace("{{ws}}", sb.partition)
+                .replace("{{ticket_dir}}", sb.ticket_dir())
+                .replace("{{ticket}}", sb.ticket_id or ""))
+    if "{{checkout_id}}" in out:
+        out = out.replace("{{checkout_id}}", _checkout_id(sb))
+    return out
+
+
+def _checkout_id(sb):
+    """The build's own checkout id for the sandbox repo — a session pointer
+    is keyed by it, so a case that needs the partition to resolve from cwd
+    seeds `sessions/{{checkout_id}}.json`."""
+    if sb.build.scripts not in sys.path:
+        sys.path.insert(0, sb.build.scripts)
+    import acs_lib  # noqa: E402  (the build under test)
+    return acs_lib.checkout_id(sb.repo)
 
 
 _HOURS_AGO = re.compile(r"\{\{hours_ago:(\d+)\}\}")
@@ -229,7 +244,20 @@ def _clock(value):
         if "{{now}}" in value:
             value = value.replace("{{now}}", _iso(0))
         value = _HOURS_AGO.sub(lambda m: _iso(int(m.group(1))), value)
+        if value == "{{hostname}}":
+            return socket.gethostname()
+        if value == "{{live_pid}}":
+            return os.getpid()          # the runner itself: alive for the probe
+        if value == "{{dead_pid}}":
+            return _dead_pid()
     return value
+
+
+def _dead_pid():
+    """A pid that belonged to a process which has already exited."""
+    proc = subprocess.Popen(["true"])
+    proc.wait()
+    return proc.pid
 
 
 def _iso(hours_ago):
@@ -317,11 +345,15 @@ def execute_skill_manifest(case, build):
 
 def execute(case, sb):
     for seed in case.get("files", []):
-        sb.write(seed.get("base", "ticket"), seed["path"], seed_content(seed))
+        sb.write(seed.get("base", "ticket"), expand(seed["path"], sb), seed_content(seed))
     invoke = case["invoke"]
     stdin = invoke.get("stdin")
     if isinstance(stdin, (dict, list)):
         stdin = json.dumps(stdin)
+    if isinstance(stdin, str):
+        # A hook payload names the repo it fires in; the sandbox path is only
+        # known at run time, so the same tokens argv gets apply here.
+        stdin = expand(stdin, sb)
     raw = sb.run(invoke.get("script", "acs.py"),
                  *[expand(a, sb) for a in invoke["argv"]], stdin=stdin)
     return {"exit_code": raw["exit_code"],

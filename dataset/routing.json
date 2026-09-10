@@ -1,5 +1,5 @@
 {
-  "description": "Routing probes for all 25 acs skills. 23 are model-invocable and get one natural-language request that must route to them without naming them. The 2 user-only skills (disable-model-invocation:true) get a pair each: an explicit invocation that MUST route, and a bare description of their intent that must NOT.\n\nThis file is the curated data. runner/gen_plugin_eval.py renders it into evals/**/case.yaml for `claude plugin eval`; dataset/cases/10-skills.json pins the routing SURFACE (each skill's shipped description and invocation flag) deterministically, with no model.\n\nThree CONTROL probes test the instrument rather than the plugin: a registration canary that must hit, an unregistered command that must miss, and an off-domain request that must route nowhere. Without them a suite where nothing can pass and one where nothing can fail are indistinguishable from a pass count. Controls are not rendered into `claude plugin eval` cases.",
+  "description": "Routing probes for all 25 acs skills. 23 are model-invocable and get one natural-language request that must route to them without naming them. The 2 user-only skills (disable-model-invocation:true) get a pair each: an explicit invocation that MUST route, and a bare description of their intent that must NOT.\n\nThis file is the curated data. runner/gen_plugin_eval.py renders it into evals/**/case.yaml for `claude plugin eval`; dataset/cases/10-skills.json pins the routing SURFACE (each skill's shipped description and invocation flag) deterministically, with no model.\n\nThree CONTROL probes test the instrument rather than the plugin: a registration canary that must hit, an unregistered command that must miss, and an off-domain request that must route nowhere. Without them a suite where nothing can pass and one where nothing can fail are indistinguishable from a pass count. Controls are not rendered into `claude plugin eval` cases. A probe may name the sandbox `profile` it runs in (default `ticketed`) and deterministic `setup` shell steps run once before its first session, so the prompt's presupposition holds — a prompt about \"this existing codebase\" is no test of a description on an empty seeded repo.",
   "skill_count": 25,
   "probe_count": 30,
   "probes": [
@@ -89,7 +89,8 @@
       "kind": "positive",
       "prompt": "Reverse-engineer the functional and non-functional requirements out of this existing codebase.",
       "must_route": true,
-      "why": "A natural-language request in the skill's domain, never naming the skill."
+      "why": "A natural-language request in the skill's domain, never naming the skill. 1.5.0: runs on the fixture app — the prompt presupposes a codebase to reverse-engineer, and on the empty seeded repo the model inspected it, found nothing, and asked instead of routing (1/5 runs).",
+      "profile": "app"
     },
     {
       "id": "ROUTE-create-standards",
@@ -113,7 +114,13 @@
       "kind": "positive",
       "prompt": "The code change is done. Make sure the docs match what actually changed before we raise the PR.",
       "must_route": true,
-      "why": "A natural-language request in the skill's domain, never naming the skill."
+      "why": "A natural-language request in the skill's domain, never naming the skill. 1.5.0: runs on the ticketed fixture app, on a ticket branch with a committed API change that docs/api.md does not yet describe — the prompt presupposes a finished change, and on the seeded repo (clean tree, one commit, no ticket branch) the model looked for it, found none, and asked instead of routing (1/5 runs).",
+      "profile": "app-ticketed",
+      "setup": [
+        "git checkout -qb task/TKT-1-let-the-api-confirm-and-pay-an-order-cha",
+        "printf '%s\\n' '' 'CONFIRM_ROUTES = (\"/orders/<id>/confirm\", \"/orders/<id>/pay\")  # TKT-1: wired to the service in the next commit' >> orders/api.py",
+        "git commit -qam 'TKT-1 add the confirm and pay routes to the API'"
+      ]
     },
     {
       "id": "ROUTE-handoff",

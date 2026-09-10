@@ -51,7 +51,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from harness import DATASET, BuildError, Sandbox, resolve_build  # noqa: E402
+from harness import DATASET, PROFILES, BuildError, Sandbox, resolve_build  # noqa: E402
 from perf_gate import summarize  # noqa: E402
 
 SCENARIOS = os.path.join(DATASET, "scenarios.json")
@@ -278,13 +278,66 @@ def preflight(build, probes, env, timeout=60):
     return all(c["passed"] for c in checks), checks
 
 
+#: Routing probes run in this sandbox profile unless they name another.
+DEFAULT_ROUTING_PROFILE = "ticketed"
+
+
+def probe_env(probe):
+    """The sandbox a routing probe runs in: `(profile, setup)`.
+
+    A prompt presupposes a state of the world — "this existing codebase", "the
+    code change is done" — and a probe is a fair test of a description only
+    when the sandbox makes that presupposition true. The 1.3.0 splits were the
+    model inspecting an empty seeded repo, finding nothing to reverse-engineer
+    or sync, and asking a question instead of routing: a dataset defect, not
+    a description defect. `profile` names a harness profile (default
+    `ticketed`); `setup` is a list of shell commands run once in the sandbox
+    before the probe's first session.
+    """
+    profile = probe.get("profile", DEFAULT_ROUTING_PROFILE)
+    if profile not in PROFILES:
+        raise ValueError("%s: unknown sandbox profile %r (known: %s)"
+                         % (probe.get("id"), profile, ", ".join(PROFILES)))
+    setup = probe.get("setup") or []
+    if not isinstance(setup, list) or not all(isinstance(x, str) for x in setup):
+        raise ValueError("%s: setup must be a list of shell commands"
+                         % probe.get("id"))
+    return profile, tuple(setup)
+
+
+def routing_sandboxes(probes):
+    """The distinct sandboxes a probe set needs, in first-use order."""
+    seen = []
+    for probe in probes:
+        key = probe_env(probe)
+        if key not in seen:
+            seen.append(key)
+    return seen
+
+
 def measure_routing(build, scenarios, probes, env, limit=None):
     conf = scenarios["routing"]
     runs_per = limit or conf.get("runs_per_probe", 5)
     timeout = conf.get("timeout_seconds", 120)
     out = []
-    with Sandbox(build, profile="ticketed") as sb:
+    # One sandbox per (profile, setup), built lazily, its setup run once
+    # before the first session, shared by every probe that asks for the same
+    # state. Routing sessions are killed at their first Skill call (or at
+    # init), so no session mutates it.
+    sandboxes = {}
+    try:
         for probe in probes:
+            key = probe_env(probe)
+            sb = sandboxes.get(key)
+            if sb is None:
+                sb = sandboxes[key] = Sandbox(build, profile=key[0])
+                for step in key[1]:
+                    try:
+                        sb.shell(step)
+                    except subprocess.CalledProcessError as exc:
+                        raise RuntimeError("%s: setup step failed (%s): %s"
+                                           % (probe["id"], step,
+                                              (exc.stderr or "").strip()))
             runs = []
             for _ in range(runs_per):
                 routed, detection, seconds = route_once(
@@ -298,13 +351,19 @@ def measure_routing(build, scenarios, probes, env, limit=None):
                               "skill": probe["skill"],
                               "explicit": explicit_skill(probe["prompt"]) is not None,
                               "control": probe.get("kind") == "control"},
+                   "profile": key[0],
                    "runs": runs}
+            if key[1]:
+                rec["setup"] = list(key[1])
             rec["aggregate"] = summarize(rec)
             hits = rec["aggregate"]["reliability"]
             print("  %-32s %d/%d  %.1fs median"
                   % (probe["id"], hits["hits"], hits["total"],
                      rec["aggregate"]["seconds"]["median"]))
             out.append(rec)
+    finally:
+        for sb in sandboxes.values():
+            sb.close()
     return out
 
 
@@ -387,6 +446,11 @@ def plan(scenarios, probes, routing_only, pipeline_only, limit):
                      "(killed at first Skill call, or at init for explicit "
                      "probes)" % (len(probes), n, len(probes) * n))
         sessions += len(probes) * n
+        envs = routing_sandboxes(probes)
+        lines.append("  sandboxes %d for routing: %s"
+                     % (len(envs), ", ".join(
+                         "%s%s" % (profile, " (+%d setup steps)" % len(setup) if setup else "")
+                         for profile, setup in envs)))
     if not routing_only:
         n = limit or scenarios["pipeline"].get("runs_per_scenario", 3)
         for s in scenarios["pipeline"]["scenarios"]:

@@ -258,6 +258,17 @@ class Sandbox:
         return {"exit_code": proc.returncode,
                 "stdout": proc.stdout, "stderr": proc.stderr}
 
+    def shell(self, command):
+        """Run one shell command in the sandbox repo — a dataset setup step.
+
+        Setup steps come verbatim from the curated dataset (a ticket branch
+        with a committed change, say) and run once before a probe's first
+        session; a failing step raises with its stderr, never silently.
+        """
+        subprocess.run(command, shell=True, cwd=self.repo, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                       text=True, env=dict(os.environ, **_GIT_ENV))
+
     def ticket_dir(self, ticket_id=None):
         return os.path.join(self.partition, ticket_id or self.ticket_id or "")
 

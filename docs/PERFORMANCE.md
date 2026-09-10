@@ -169,8 +169,13 @@ rewrite inside a scoped ticket, and an untested module that drops coverage
 under the floor. A defect the tests catch would never reach the verifier, so
 it would measure nothing about it; `make defects-selftest` proves each one
 still applies and stays green. Feeding them through the verifier is the paid
-measurement (one `/acs:code`-style verify per defect); its output is a
-per-dimension catch rate, the number `make verifier-rates` cannot give you.
+measurement: `make catch-rate` (plan it with `make catch-rate-plan`) seeds
+each defect on the ticket branch of an `app-ticketed` sandbox and runs one
+`/acs:code` session per defect, so the verifier judges a branch diff that
+carries the defect; a defect is caught when the owning dimension produces a
+finding at the expected severity in the verifier's own verdict document. Its
+output is a per-dimension catch rate — the number `make verifier-rates` cannot
+give you — and one run per defect is a screen, `CATCH_RUNS=3` the statistic.
 
 The pipeline set is deliberately three scenarios, not twenty-five.
 `scenarios.json` names every skill it excludes and why, so the gap is

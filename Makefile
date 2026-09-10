@@ -12,6 +12,7 @@
 
 PYTHON  ?= python3
 MUTANTS ?= 40
+CATCH_RUNS ?= 1
 WORKSPACE ?= ../gms-marketplace/.acs/state-machine/globalmindsolution-gms-marketplace
 RESULTS ?= results
 JSON    ?= $(RESULTS)/latest.json
@@ -56,6 +57,7 @@ perf-test: ## Self-test the tier-3 comparator's decision rules
 	$(PYTHON) runner/test_verifier_rates.py
 	$(PYTHON) runner/test_fixture_app.py
 	$(PYTHON) runner/test_defects.py
+	$(PYTHON) runner/test_verifier_catch_rate.py
 
 report: ## Render report.md + report.html from the last run
 	$(PYTHON) runner/report.py --json $(JSON) --out $(REPORT)
@@ -65,6 +67,12 @@ fixture-selftest: ## Build the fixture app in a temp dir and run its own tests
 
 defects-selftest: ## Every seeded defect applies to a fresh fixture and leaves its suite green
 	$(PYTHON) runner/defects.py selftest
+
+catch-rate-plan: ## What `make catch-rate` would run, spending nothing
+	$(PYTHON) runner/verifier_catch_rate.py --dry-run
+
+catch-rate: ## PAID — feed every seeded defect through /acs:code and read the verifier's verdicts
+	$(PYTHON) runner/verifier_catch_rate.py --runs $(CATCH_RUNS)
 
 check: ## Fail if any generated tree is stale against its source
 	$(PYTHON) runner/gen_plugin_eval.py --check
@@ -95,6 +103,7 @@ verify-self: ## Byte-compile the runner, parse every dataset file, self-test the
 	$(PYTHON) runner/test_verifier_rates.py
 	$(PYTHON) runner/test_fixture_app.py
 	$(PYTHON) runner/test_defects.py
+	$(PYTHON) runner/test_verifier_catch_rate.py
 	@$(PYTHON) -c "import glob,json,sys; \
 	  [json.load(open(f)) for f in glob.glob('dataset/**/*.json', recursive=True)]; \
 	  print('dataset: all JSON parses')"

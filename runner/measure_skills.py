@@ -19,6 +19,12 @@ Two measurement notes that decide how the numbers may be read:
   session never emits its cost envelope. `cost_usd` is recorded as null rather
   than estimated, because an invented number in a cost baseline is worse than
   an absent one.
+* **Explicit probes are decided by the CLI, not the model.** A typed
+  `/acs:<skill>` is expanded into the prompt and never dispatched through the
+  `Skill` tool, so the two `disable-model-invocation` skills can only be
+  observed as *registered*: the `init` event's `slash_commands` list. Those
+  probes are killed at `init`, before any model turn. Every run records how it
+  was decided in `detection`, so a measurement never mixes the two up.
 * **Pipeline cost and quality come from acs's own ledger**, not from this
   script's observations: `<ticket>/<skill>-state.json` is what `/acs:usage`
   reads, so the evaluation and the product cannot disagree about what a run
@@ -51,12 +57,68 @@ PIPELINE_TOOLS = ("Bash", "Read", "Write", "Edit", "Glob", "Grep", "Task",
 # Driving claude
 # --------------------------------------------------------------------------
 
+def explicit_skill(prompt):
+    """The command an explicit `/acs:<skill>` prompt names, else None.
+
+    A user-typed slash command is expanded into the prompt by the CLI and never
+    dispatched through the `Skill` tool, so a probe whose prompt *is* the
+    command cannot be observed as a tool_use. `install-hooks` and `update` set
+    `disable-model-invocation: true`, which makes the explicit command the only
+    way to reach them at all.
+    """
+    text = (prompt or "").strip()
+    if not text.startswith("/"):
+        return None
+    parts = text[1:].split(None, 1)
+    return parts[0] if parts else None
+
+
+def classify(lines, prompt):
+    """Decide where a stream-json session routed, from its raw event lines.
+
+    Returns `(routed_to, detection)`. Pure: `lines` is any iterable of
+    stream-json lines, so the decision rule is testable without a `claude`,
+    and the caller may stop reading the moment a value comes back.
+
+    * A description prompt is routed by the model: `routed_to` is the `skill`
+      of the first `Skill` tool_use and `detection` is `skill_tool_use`.
+    * An explicit `/acs:<skill>` prompt is routed by the CLI: the `init` event
+      lists every registered command in `slash_commands`, so `routed_to` is the
+      named command when it is registered and `detection` is `registered`.
+      The probe is decided at `init`, before any model turn.
+    * An explicit probe whose stream never reports a registration list — an
+      `init` without `slash_commands`, or no `init` at all — is `unmeasured`:
+      `routed_to` is None, which the gate counts as a miss, never as a pass.
+    """
+    want = explicit_skill(prompt)
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get("type")
+        if (want is not None and kind == "system"
+                and event.get("subtype") == "init"):
+            if "slash_commands" not in event:
+                return None, "unmeasured"
+            registered = event.get("slash_commands") or []
+            return (want if want in registered else None), "registered"
+        if kind == "assistant":
+            for block in (event.get("message") or {}).get("content") or []:
+                if block.get("type") == "tool_use" and block.get("name") == "Skill":
+                    return (block.get("input") or {}).get("skill"), "skill_tool_use"
+    return None, ("unmeasured" if want is not None else "skill_tool_use")
+
+
 def route_once(prompt, cwd, timeout, env):
-    """Return (routed_to, seconds). Killed at the first Skill call.
+    """Return (routed_to, detection, seconds). Killed at the first decision.
 
     `routed_to` is None when the model stopped, or the timeout elapsed, without
     invoking any skill — which for a negative probe is the passing outcome, so
-    None is a result here and never an error.
+    None is a result here and never an error. `detection` says which rule in
+    `classify` decided the run.
     """
     cmd = ["claude", "-p", prompt, "--output-format", "stream-json",
            "--verbose", "--permission-mode", "acceptEdits",
@@ -65,30 +127,22 @@ def route_once(prompt, cwd, timeout, env):
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, text=True,
                             cwd=cwd, env=env)
-    routed = None
     deadline = started + timeout
-    try:
-        for line in proc.stdout:
+
+    def until_deadline(stream):
+        for line in stream:
             if time.time() > deadline:
-                break
-            try:
-                event = json.loads(line)
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if event.get("type") != "assistant":
-                continue
-            for block in (event.get("message") or {}).get("content") or []:
-                if block.get("type") == "tool_use" and block.get("name") == "Skill":
-                    routed = (block.get("input") or {}).get("skill")
-                    break
-            if routed:
-                break
+                return
+            yield line
+
+    try:
+        routed, detection = classify(until_deadline(proc.stdout), prompt)
     finally:
         proc.kill()
         proc.wait()
         if proc.stdout:
             proc.stdout.close()
-    return routed, round(time.time() - started, 3)
+    return routed, detection, round(time.time() - started, 3)
 
 
 def session_once(prompt, cwd, timeout, env):
@@ -186,15 +240,16 @@ def measure_routing(build, scenarios, probes, env, limit=None):
         for probe in probes:
             runs = []
             for _ in range(runs_per):
-                routed, seconds = route_once(probe["prompt"], sb.repo,
-                                             timeout, env)
+                routed, detection, seconds = route_once(
+                    probe["prompt"], sb.repo, timeout, env)
                 runs.append({"ok": True, "routed_to": routed,
-                             "seconds": seconds, "cost_usd": None,
-                             "turns": None})
+                             "detection": detection, "seconds": seconds,
+                             "cost_usd": None, "turns": None})
             rec = {"id": probe["id"], "kind": "routing",
                    "skill": probe["skill"],
                    "expect": {"must_route": probe.get("must_route", True),
-                              "skill": probe["skill"]},
+                              "skill": probe["skill"],
+                              "explicit": explicit_skill(probe["prompt"]) is not None},
                    "runs": runs}
             rec["aggregate"] = summarize(rec)
             hits = rec["aggregate"]["reliability"]

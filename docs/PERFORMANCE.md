@@ -55,6 +55,15 @@ tool_use — that is what keeps a probe to time-to-route instead of a whole skil
 body — so it never emits a cost envelope. `cost_usd` is `null` rather than
 estimated; an invented number in a cost baseline is worse than an absent one.
 
+The two explicit probes (`/acs:install-hooks`, `/acs:update`) are cheaper
+still. A typed slash command is expanded by the CLI itself and never dispatched
+through the `Skill` tool, so `disable-model-invocation` skills can only be
+observed as **registered**: the `init` event's `slash_commands` list. Those
+probes are decided at `init`, before any model turn. Every routing run records
+`detection` — `skill_tool_use`, `registered`, or `unmeasured` when an explicit
+probe's stream reported no registration list at all, which the gate counts as
+a miss, never a pass.
+
 ## The decision rules
 
 Stated here because `METHODOLOGY.md` is right that `runs: 3` with no declared
@@ -114,7 +123,8 @@ than a reader thinks, so it may never be green by having run nothing.
 
 `make measure-plan` prints it before anything is spent. At the shipped scenario
 set that is **144 sessions**: 27 routing probes × 5 runs (each a few seconds,
-killed at the first `Skill` call) plus 3 pipeline scenarios × 3 runs (one of
+killed at the first `Skill` call, or at `init` for the two explicit probes)
+plus 3 pipeline scenarios × 3 runs (one of
 which is a full `/acs:code` TDD cycle). `make measure-routing` runs the cheap
 half alone.
 

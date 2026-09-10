@@ -95,6 +95,11 @@ verified on the strength of a tier-1 gate.
 Tier 3 measures it without waiting for early access: `runner/measure_skills.py`
 drives the same `dataset/routing.json` prompts through plain `claude -p` with
 only the `Skill` tool allowed, killing the session at the first `Skill` call.
+The two explicit probes (`/acs:install-hooks`, `/acs:update`) cannot be seen
+that way — a typed slash command is expanded by the CLI and never dispatched
+through the `Skill` tool — so they are decided at the `init` event's
+`slash_commands` list and killed there, before any model turn; each run records
+its `detection` rule so the two kinds are never read as one.
 Its decision rule is stated in [`PERFORMANCE.md`](PERFORMANCE.md) — a positive
 probe passes only if it routes on **all** runs, a split result is a finding, and
 a negative probe that auto-invokes even once is `critical`. That answers the

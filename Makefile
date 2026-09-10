@@ -49,6 +49,7 @@ perf: ## Judge the last measurement against the baseline (pure; no model, no cos
 
 perf-test: ## Self-test the tier-3 comparator's decision rules
 	$(PYTHON) runner/test_perf_gate.py
+	$(PYTHON) runner/test_measure_skills.py
 
 report: ## Render report.md + report.html from the last run
 	$(PYTHON) runner/report.py --json $(JSON) --out $(REPORT)
@@ -70,6 +71,7 @@ list: ## List every case without running anything
 verify-self: ## Byte-compile the runner, parse every dataset file, self-test the gate
 	$(PYTHON) -m py_compile runner/*.py
 	$(PYTHON) runner/test_perf_gate.py
+	$(PYTHON) runner/test_measure_skills.py
 	@$(PYTHON) -c "import glob,json,sys; \
 	  [json.load(open(f)) for f in glob.glob('dataset/**/*.json', recursive=True)]; \
 	  print('dataset: all JSON parses')"

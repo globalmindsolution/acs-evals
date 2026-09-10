@@ -1,19 +1,19 @@
 {
-  "scenario_set_version": "1.0.0",
-  "description": "Tier 3's controlled experiment: the fixed set of runs executed against every gated build so quality, reliability, cost and time are comparable release over release. Changing this file changes the experiment — bump scenario_set_version, and every baseline recorded under the old version becomes incomparable by construction.",
+  "scenario_set_version": "1.1.0",
+  "description": "Tier 3's controlled experiment: the fixed set of runs executed against every gated build so quality, reliability, cost and time are comparable release over release. Changing this file changes the experiment \u2014 bump scenario_set_version, and every baseline recorded under the old version becomes incomparable by construction.",
   "decision_rules": {
-    "routing": "A positive probe passes only if it routes to the expected skill on EVERY run. A split result (some runs route, some do not) is a finding, never a pass — routing is stochastic, so one green run is not evidence. A negative probe passes only if it auto-invokes the skill on NO run.",
+    "routing": "A positive probe passes only if it routes to the expected skill on EVERY run. A split result (some runs route, some do not) is a finding, never a pass \u2014 routing is stochastic, so one green run is not evidence. A negative probe passes only if it auto-invokes the skill on NO run.",
     "cost_and_time": "Compared as the MEDIAN across runs, never a single run. The spread (min/max) is recorded alongside so thresholds can be calibrated from observed variance rather than guessed.",
     "quality": "Compared as the median across runs for iteration counts and coverage; blocking findings and non-completion are compared as rates, where the floor is zero."
   },
   "routing": {
     "source": "dataset/routing.json",
-    "note": "The 27 probes are NOT duplicated here — routing.json stays the single source of truth, guarded by `make check`. Tier 3 runs the same prompts through `claude -p` with only the Skill tool allowed, killing the process at the first Skill call, so a probe costs time-to-route and never executes a skill body.",
+    "note": "The 27 probes are NOT duplicated here \u2014 routing.json stays the single source of truth, guarded by `make check`. Tier 3 runs the same prompts through `claude -p` with only the Skill tool allowed, killing the process at the first Skill call, so a probe costs time-to-route and never executes a skill body. The two explicit probes (`/acs:install-hooks`, `/acs:update`) are decided at the session's `init` event instead: a typed slash command is expanded by the CLI and never appears as a Skill tool_use, so they pass when `slash_commands` lists the command, and are killed there before any model turn. scenario_set_version 1.1.0 records that change of rule; no 1.0.0 baseline was ever promoted.",
     "runs_per_probe": 5,
     "timeout_seconds": 120
   },
   "pipeline": {
-    "note": "End-to-end runs that DO execute skill bodies. These are the expensive half — deliberately few, deliberately representative. Each names the sandbox profile it starts from, the request, and the ledger paths the collector reads afterwards for quality signals.",
+    "note": "End-to-end runs that DO execute skill bodies. These are the expensive half \u2014 deliberately few, deliberately representative. Each names the sandbox profile it starts from, the request, and the ledger paths the collector reads afterwards for quality signals.",
     "runs_per_scenario": 3,
     "scenarios": [
       {
@@ -22,7 +22,11 @@
         "profile": "seeded",
         "prompt": "We need a CSV export on the reports page. Please raise a ticket for it.",
         "timeout_seconds": 600,
-        "measures": ["reliability", "cost", "time"],
+        "measures": [
+          "reliability",
+          "cost",
+          "time"
+        ],
         "why": "The cheapest full skill body in the pipeline, and the one every other ticket depends on. Establishes the floor of what a skill run costs."
       },
       {
@@ -31,8 +35,13 @@
         "profile": "ticketed",
         "prompt": "TKT-1 is ready to implement. Please implement it.",
         "timeout_seconds": 1800,
-        "measures": ["reliability", "cost", "time", "quality"],
-        "why": "The dominant cost centre — plan/execute/verify with up to three iterations. This is the scenario whose cost and iteration count a release most plausibly regresses, and the only one that yields verify-iteration and coverage signal."
+        "measures": [
+          "reliability",
+          "cost",
+          "time",
+          "quality"
+        ],
+        "why": "The dominant cost centre \u2014 plan/execute/verify with up to three iterations. This is the scenario whose cost and iteration count a release most plausibly regresses, and the only one that yields verify-iteration and coverage signal."
       },
       {
         "id": "PIPE-docs-sync",
@@ -40,7 +49,11 @@
         "profile": "ticketed",
         "prompt": "The implementation for TKT-1 has landed on this branch. Bring the docs up to date with it.",
         "timeout_seconds": 900,
-        "measures": ["reliability", "cost", "time"],
+        "measures": [
+          "reliability",
+          "cost",
+          "time"
+        ],
         "why": "Runs after /acs:code and re-derives its own changeset. A cheap skill that quietly turns expensive is the regression this catches."
       }
     ]

@@ -157,6 +157,21 @@ so the stakes trigger has something to fire on. Its content is hashed into
 routing and pipeline halves separately, so a routing baseline is not thrown
 away when the fixture or a pipeline scenario changes.
 
+### Seeded defects — the verifier's catch rate
+
+`dataset/fixtures/app/defects/` holds seven changesets that leave the
+fixture's own test suite **green** and are wrong in exactly one way a named
+code-verifier dimension must catch: a business-logic off-by-one behind an
+adjusted test, tax rounding broken behind a test that asserts nothing, a
+committed live key, a dead duplicate function, a doc contradicted by the diff
+(expected `info` — consumer-doc drift is advisory by design), an unrelated
+rewrite inside a scoped ticket, and an untested module that drops coverage
+under the floor. A defect the tests catch would never reach the verifier, so
+it would measure nothing about it; `make defects-selftest` proves each one
+still applies and stays green. Feeding them through the verifier is the paid
+measurement (one `/acs:code`-style verify per defect); its output is a
+per-dimension catch rate, the number `make verifier-rates` cannot give you.
+
 The pipeline set is deliberately three scenarios, not twenty-five.
 `scenarios.json` names every skill it excludes and why, so the gap is
 reviewable rather than merely absent.

@@ -55,12 +55,16 @@ perf-test: ## Self-test the tier-3 comparator's decision rules
 	$(PYTHON) runner/test_mutation_cli.py
 	$(PYTHON) runner/test_verifier_rates.py
 	$(PYTHON) runner/test_fixture_app.py
+	$(PYTHON) runner/test_defects.py
 
 report: ## Render report.md + report.html from the last run
 	$(PYTHON) runner/report.py --json $(JSON) --out $(REPORT)
 
 fixture-selftest: ## Build the fixture app in a temp dir and run its own tests
 	$(PYTHON) runner/fixture_app.py selftest
+
+defects-selftest: ## Every seeded defect applies to a fresh fixture and leaves its suite green
+	$(PYTHON) runner/defects.py selftest
 
 check: ## Fail if any generated tree is stale against its source
 	$(PYTHON) runner/gen_plugin_eval.py --check
@@ -90,6 +94,7 @@ verify-self: ## Byte-compile the runner, parse every dataset file, self-test the
 	$(PYTHON) runner/test_mutation_cli.py
 	$(PYTHON) runner/test_verifier_rates.py
 	$(PYTHON) runner/test_fixture_app.py
+	$(PYTHON) runner/test_defects.py
 	@$(PYTHON) -c "import glob,json,sys; \
 	  [json.load(open(f)) for f in glob.glob('dataset/**/*.json', recursive=True)]; \
 	  print('dataset: all JSON parses')"

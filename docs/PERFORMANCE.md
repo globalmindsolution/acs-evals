@@ -71,7 +71,12 @@ rule is not a criterion.
 
 - **Routing, positive probe** — passes only if it routes to the expected skill
   on **every** run. A split result is a finding, never a pass. Routing is
-  stochastic; one green run is not evidence.
+  stochastic; one green run is not evidence. A probe runs in the sandbox its
+  prompt presupposes — `profile` and deterministic `setup` steps in
+  `routing.json` (default: the `ticketed` seed) — because a prompt about
+  "this existing codebase" on an empty repo tests the model's patience, not
+  the description; a split is triaged against the sandbox before the
+  description (scenario set 1.5.0).
 - **Routing, negative probe** — passes only if the skill auto-invokes on **no**
   run. This is the `disable-model-invocation` guarantee, and it is `critical`.
 - **Controls** — three probes whose answer is known before the run: a

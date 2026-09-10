@@ -5,7 +5,7 @@
     "version": "0.4.9",
     "root": "/root/.claude/plugins/cache/gms-marketplace/acs/0.4.9"
   },
-  "scenario_set_version": "1.3.0",
+  "scenario_set_version": "1.5.0",
   "environment": {
     "claude_cli_version": "2.1.267 (Claude Code)",
     "host": "linux",
@@ -752,20 +752,13 @@
         "explicit": false,
         "control": false
       },
+      "profile": "app",
       "runs": [
         {
           "ok": true,
           "routed_to": "acs:create-requirements",
           "detection": "skill_tool_use",
-          "seconds": 14.827,
-          "cost_usd": null,
-          "turns": null
-        },
-        {
-          "ok": true,
-          "routed_to": null,
-          "detection": "skill_tool_use",
-          "seconds": 22.572,
+          "seconds": 7.715,
           "cost_usd": null,
           "turns": null
         },
@@ -773,7 +766,7 @@
           "ok": true,
           "routed_to": "acs:create-requirements",
           "detection": "skill_tool_use",
-          "seconds": 14.428,
+          "seconds": 3.91,
           "cost_usd": null,
           "turns": null
         },
@@ -781,7 +774,7 @@
           "ok": true,
           "routed_to": "acs:create-requirements",
           "detection": "skill_tool_use",
-          "seconds": 4.365,
+          "seconds": 4.761,
           "cost_usd": null,
           "turns": null
         },
@@ -789,7 +782,15 @@
           "ok": true,
           "routed_to": "acs:create-requirements",
           "detection": "skill_tool_use",
-          "seconds": 4.051,
+          "seconds": 7.165,
+          "cost_usd": null,
+          "turns": null
+        },
+        {
+          "ok": true,
+          "routed_to": "acs:create-requirements",
+          "detection": "skill_tool_use",
+          "seconds": 5.244,
           "cost_usd": null,
           "turns": null
         }
@@ -797,14 +798,14 @@
       "aggregate": {
         "runs": 5,
         "reliability": {
-          "hits": 4,
+          "hits": 5,
           "total": 5,
-          "rate": 0.8
+          "rate": 1.0
         },
         "seconds": {
-          "median": 14.428,
-          "min": 4.051,
-          "max": 22.572,
+          "median": 5.244,
+          "min": 3.91,
+          "max": 7.715,
           "n": 5
         },
         "cost_usd": null,
@@ -965,12 +966,13 @@
         "explicit": false,
         "control": false
       },
+      "profile": "app-ticketed",
       "runs": [
         {
           "ok": true,
-          "routed_to": null,
+          "routed_to": "acs:docs-sync",
           "detection": "skill_tool_use",
-          "seconds": 28.128,
+          "seconds": 8.05,
           "cost_usd": null,
           "turns": null
         },
@@ -978,7 +980,7 @@
           "ok": true,
           "routed_to": "acs:docs-sync",
           "detection": "skill_tool_use",
-          "seconds": 3.909,
+          "seconds": 3.86,
           "cost_usd": null,
           "turns": null
         },
@@ -986,7 +988,7 @@
           "ok": true,
           "routed_to": "acs:docs-sync",
           "detection": "skill_tool_use",
-          "seconds": 4.139,
+          "seconds": 4.502,
           "cost_usd": null,
           "turns": null
         },
@@ -994,7 +996,7 @@
           "ok": true,
           "routed_to": "acs:docs-sync",
           "detection": "skill_tool_use",
-          "seconds": 3.476,
+          "seconds": 4.124,
           "cost_usd": null,
           "turns": null
         },
@@ -1002,22 +1004,27 @@
           "ok": true,
           "routed_to": "acs:docs-sync",
           "detection": "skill_tool_use",
-          "seconds": 17.04,
+          "seconds": 3.866,
           "cost_usd": null,
           "turns": null
         }
       ],
+      "setup": [
+        "git checkout -qb task/TKT-1-let-the-api-confirm-and-pay-an-order-cha",
+        "printf '%s\\n' '' 'CONFIRM_ROUTES = (\"/orders/<id>/confirm\", \"/orders/<id>/pay\")  # TKT-1: wired to the service in the next commit' >> orders/api.py",
+        "git commit -qam 'TKT-1 add the confirm and pay routes to the API'"
+      ],
       "aggregate": {
         "runs": 5,
         "reliability": {
-          "hits": 4,
+          "hits": 5,
           "total": 5,
-          "rate": 0.8
+          "rate": 1.0
         },
         "seconds": {
-          "median": 4.139,
-          "min": 3.476,
-          "max": 28.128,
+          "median": 4.124,
+          "min": 3.86,
+          "max": 8.05,
           "n": 5
         },
         "cost_usd": null,
@@ -2164,29 +2171,29 @@
     }
   ],
   "scope": "routing",
-  "scope_note": "Recorded by the routing-only collector at commit 40e40df, before `scope` existed and while routing-only runs were marked incomplete by construction. Re-derived under the 0824379 rule from this document's own probes: scope routing, 30/30 probes with 5/5 runs, no probe filter, pre-flight ok \u2014 a whole routing-scoped measurement, promotable as acs-0.4.9-routing.json. Composed for scenario set 1.3.0: the 29 probes whose prompts 1.3.0 did not change carry their 1.2.0 runs unchanged; ROUTE-ship carries 5 fresh runs under its 1.3.0 prompt (generated_at of those runs: 2026-09-10T06:10:52Z). set_hashes were added retroactively when per-half hashing landed: routing 0fba201a8d3810eb (unchanged since this run), pipeline 076ae2ed179ff05a (the 1.3.0 pipeline set).",
+  "scope_note": "Recorded by the routing-only collector at commit 40e40df, before `scope` existed and while routing-only runs were marked incomplete by construction. Re-derived under the 0824379 rule from this document's own probes: scope routing, 30/30 probes with 5/5 runs, no probe filter, pre-flight ok — a whole routing-scoped measurement, promotable as acs-0.4.9-routing.json. Composed for scenario set 1.3.0: the 29 probes whose prompts 1.3.0 did not change carry their 1.2.0 runs unchanged; ROUTE-ship carries 5 fresh runs under its 1.3.0 prompt (generated_at of those runs: 2026-09-10T06:10:52Z). Composed again for scenario set 1.5.0: the 28 probes whose sandbox 1.5.0 did not change carry their runs unchanged; ROUTE-create-requirements (fixture app) and ROUTE-docs-sync (ticketed fixture app, committed change on the ticket branch) carry 5 fresh runs each under their 1.5.0 sandboxes (generated_at of those runs: 2026-09-10T07:13:34Z, 2026-09-10T07:13:59Z). set_hashes: routing 441ffb205c582634 (1.5.0), pipeline 1727107699361b03 (the 1.4.0 pipeline set, which 1.5.0 leaves unchanged).",
   "triage": {
-    "reviewed": "2026-09-10, before promotion",
+    "reviewed": "2026-09-10, before promotion; re-reviewed 2026-09-10 for 1.5.0",
     "findings": [
       {
         "probe": "ROUTE-create-requirements",
-        "verdict": "description defect (plugin)",
-        "note": "4/5 \u2014 split result; per the unanimity rule a finding about the description's discrimination from its neighbours."
+        "verdict": "probe presupposition defect (dataset), fixed in 1.5.0",
+        "note": "4/5 under 1.3.0 on the seeded repo. Diagnostic sessions showed the model naming acs:create-requirements every time, inspecting the repo first on some runs, finding no code to reverse-engineer, and asking instead of routing. The 1.3.0 triage called this a description defect; it was the sandbox. Re-measured 5/5 on the fixture app with the prompt unchanged."
       },
       {
         "probe": "ROUTE-docs-sync",
-        "verdict": "description defect (plugin)",
-        "note": "4/5 \u2014 split result, same rule."
+        "verdict": "probe presupposition defect (dataset), fixed in 1.5.0",
+        "note": "4/5 under 1.3.0 on the seeded repo: clean tree, one commit, no ticket branch, so \"the code change is done\" was false and the model that checked asked which change. Re-measured 5/5 on the ticketed fixture app with a committed change on the ticket branch, prompt unchanged."
       },
       {
         "probe": "ROUTE-ship",
         "verdict": "probe defect (dataset), fixed in 1.3.0",
-        "note": "0/5 under the 1.2.0 prompt; the diagnostic session showed the model naming acs:ship and asking for the request \u2014 the prompt shipped nothing. Re-measured 5/5 under the 1.3.0 prompt."
+        "note": "0/5 under the 1.2.0 prompt; the diagnostic session showed the model naming acs:ship and asking for the request — the prompt shipped nothing. Re-measured 5/5 under the 1.3.0 prompt."
       }
     ]
   },
   "set_hashes": {
-    "routing": "0fba201a8d3810eb",
-    "pipeline": "076ae2ed179ff05a"
+    "routing": "441ffb205c582634",
+    "pipeline": "1727107699361b03"
   }
 }

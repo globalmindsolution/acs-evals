@@ -23,13 +23,16 @@ Promote one only when all three hold:
 
 **Current contents.** `acs-0.4.9-routing.json` — the first routing-scoped
 baseline, taken 2026-09-10 against the installed 0.4.9 build (= `main` at
-`9332f22`): 30 probes × 5 runs, pre-flight and all three controls clean,
-median time-to-route 3.0 s across the 23 description probes. It was composed
+`9332f22`): 30 probes × 5 runs, all 30 unanimous, pre-flight and all three
+controls clean, median time-to-route 3.0 s across the 23 description probes.
+It was composed twice, and the document's `scope_note` and `triage` say so:
 for scenario set 1.3.0 from the 1.2.0 run plus five fresh runs of `ROUTE-ship`
-under its corrected prompt; the document's `scope_note` and `triage` say so and
-name the two probes that split (`ROUTE-create-requirements`, `ROUTE-docs-sync`,
-4/5 each — description findings against the plugin, tracked there). Reliability
-is an absolute gate, so promoting a baseline with those findings bakes in their
-*time*, never their misses. No pipeline-scoped or full baseline exists yet:
+under its corrected prompt, then for 1.5.0 with five fresh runs each of
+`ROUTE-create-requirements` (on the fixture app, 5/5, 5.2 s median) and
+`ROUTE-docs-sync` (on the ticketed fixture app with a committed change on the
+ticket branch, 5/5, 4.1 s median) — the two probes that split 4/5 under 1.3.0
+because the seeded sandbox made their prompts false, first mis-triaged as
+description defects. Reliability is an absolute gate, so a baseline is never
+promoted with a split baked in. No pipeline-scoped or full baseline exists yet:
 cost, verify-iteration and coverage comparisons still report UNCOMPARED — see
 [`../../docs/PERFORMANCE.md`](../../docs/PERFORMANCE.md).

@@ -126,10 +126,18 @@ a negative probe that auto-invokes even once is `critical`. That answers the
 "`runs: 3` with no declared rule is not a criterion" objection this section
 raised. **First run 2026-09-10** (`dataset/baselines/acs-0.4.9-routing.json`):
 27 of 30 probes unanimous over 5 runs, one probe's prompt found to carry no
-request and corrected (scenario set 1.3.0), two skills split 4/5 — findings
-against their descriptions, not the harness. Before that run routing was
-unmeasured in fact, and the sentence that follows is kept because the point
-still stands — but
+request and corrected (scenario set 1.3.0), two skills split 4/5. Those two
+were first triaged as description defects; diagnostic sessions showed the
+model naming the right skill every time and, on the miss runs, inspecting the
+empty seeded repo first, finding no codebase to reverse-engineer and no
+finished change to sync, and asking instead of routing. The sandbox had made
+the prompt false. Scenario set 1.5.0 lets a probe name the sandbox its prompt
+presupposes (`profile`, deterministic `setup` steps), and both re-measured
+5/5 with their prompts unchanged — 30 of 30 unanimous. The lesson is the
+methodological one: a routing probe tests a description only when its
+presupposition holds, so a split is triaged against the sandbox before the
+description. Before that run routing was unmeasured in fact, and the sentence
+that follows is kept because the point still stands — but
 it is no longer unmeasurable.
 
 ### 3. The baseline is a moving target

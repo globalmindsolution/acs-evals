@@ -159,9 +159,9 @@
       "id": "ROUTE-ship",
       "skill": "acs:ship",
       "kind": "positive",
-      "prompt": "Take this request end to end for me, from ticket all the way to a pull request.",
+      "prompt": "Ship a password-reset email flow for me end to end: open the ticket, implement it with tests, and get a pull request up for review — I don't want to drive each step myself.",
       "must_route": true,
-      "why": "A natural-language request in the skill's domain, never naming the skill."
+      "why": "A natural-language request in the skill's domain, never naming the skill. The earlier prompt ('Take this request end to end for me, from ticket all the way to a pull request') routed nowhere on 5/5 runs of the 2026-09-10 measurement; a diagnostic session showed the model naming acs:ship and asking what the request was — it had nothing to ship. A routing probe must carry a shippable request, as s04's does."
     },
     {
       "id": "ROUTE-standardize-project",

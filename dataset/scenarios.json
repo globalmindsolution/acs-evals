@@ -1,5 +1,5 @@
 {
-  "scenario_set_version": "1.2.0",
+  "scenario_set_version": "1.3.0",
   "description": "Tier 3's controlled experiment: the fixed set of runs executed against every gated build so quality, reliability, cost and time are comparable release over release. Changing this file changes the experiment — bump scenario_set_version, and every baseline recorded under the old version becomes incomparable by construction.",
   "decision_rules": {
     "routing": "A positive probe passes only if it routes to the expected skill on EVERY run. A split result (some runs route, some do not) is a finding, never a pass — routing is stochastic, so one green run is not evidence. A negative probe passes only if it auto-invokes the skill on NO run.",
@@ -8,7 +8,7 @@
   },
   "routing": {
     "source": "dataset/routing.json",
-    "note": "The 30 probes (27 routing + 3 controls) are NOT duplicated here — routing.json stays the single source of truth, guarded by `make check`. Tier 3 runs the same prompts through `claude -p` with only the Skill tool allowed, killing the process at the first Skill call, so a probe costs time-to-route and never executes a skill body. The two explicit probes (`/acs:install-hooks`, `/acs:update`) are decided at the session's `init` event instead: a typed slash command is expanded by the CLI and never appears as a Skill tool_use, so they pass when `slash_commands` lists the command, and are killed there before any model turn. scenario_set_version 1.1.0 records that change of rule; no 1.0.0 baseline was ever promoted. scenario_set_version 1.2.0 adds the three CONTROL probes; the explicit ones among them also run as a free pre-flight before any paid session, and a failed pre-flight writes no measurement.",
+    "note": "The 30 probes (27 routing + 3 controls) are NOT duplicated here — routing.json stays the single source of truth, guarded by `make check`. Tier 3 runs the same prompts through `claude -p` with only the Skill tool allowed, killing the process at the first Skill call, so a probe costs time-to-route and never executes a skill body. The two explicit probes (`/acs:install-hooks`, `/acs:update`) are decided at the session's `init` event instead: a typed slash command is expanded by the CLI and never appears as a Skill tool_use, so they pass when `slash_commands` lists the command, and are killed there before any model turn. scenario_set_version 1.1.0 records that change of rule; no 1.0.0 baseline was ever promoted. scenario_set_version 1.2.0 adds the three CONTROL probes; the explicit ones among them also run as a free pre-flight before any paid session, and a failed pre-flight writes no measurement. 1.3.0 changes ROUTE-ship's prompt to carry a concrete request (the 1.2.0 prompt could not route by construction); every other probe is unchanged.",
     "runs_per_probe": 5,
     "timeout_seconds": 120
   },

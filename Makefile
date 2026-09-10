@@ -41,7 +41,7 @@ measure: ## TIER 3 — run the controlled scenario set (SPENDS MONEY; needs `cla
 measure-plan: ## What `make measure` would run, and how many sessions, spending nothing
 	$(PYTHON) runner/measure_skills.py --dry-run
 
-measure-routing: ## TIER 3, cheap half — routing reliability only (27 probes)
+measure-routing: ## TIER 3, cheap half — routing reliability + controls (30 probes)
 	$(PYTHON) runner/measure_skills.py --routing-only --out $(MEASURE)
 
 perf: ## Judge the last measurement against the baseline (pure; no model, no cost)

@@ -27,6 +27,7 @@ PROVISIONAL = {
     "reliability": {
         "routing_positive_accuracy_floor": {"value": 1.0, "severity": "major"},
         "routing_negative_accuracy_floor": {"value": 1.0, "severity": "critical"},
+        "routing_control_floor": {"value": 1.0, "severity": "critical"},
         "pipeline_completion_floor": {"value": 1.0, "severity": "major"},
     },
     "cost": {"median_regression_ratio": {"value": 1.25, "severity": "major"},
@@ -43,10 +44,11 @@ CALIBRATED = dict(PROVISIONAL, basis="calibrated")
 
 
 def routing(pid="ROUTE-code", skill="acs:code", routed=None, must=True,
-            seconds=4.0, cost=0.01):
+            seconds=4.0, cost=0.01, control=False):
     routed = routed if routed is not None else [skill] * 3
     probe = {"id": pid, "kind": "routing", "skill": skill,
-             "expect": {"must_route": must, "skill": skill},
+             "expect": {"must_route": must, "skill": skill,
+                        "control": control},
              "runs": [{"ok": True, "routed_to": r, "seconds": seconds,
                        "cost_usd": cost} for r in routed]}
     probe["aggregate"] = pg.summarize(probe)
@@ -104,6 +106,42 @@ class TestSummarise(unittest.TestCase):
 
 class TestAbsoluteGates(unittest.TestCase):
     """Floors that hold with no baseline — definitions, not measurements."""
+
+    def test_an_off_domain_control_scores_a_hit_only_when_nothing_routes(self):
+        quiet = routing("CONTROL-off-domain", skill=None, must=False,
+                        routed=[None, None, None], control=True)
+        self.assertEqual(quiet["aggregate"]["reliability"]["hits"], 3)
+        noisy = routing("CONTROL-off-domain", skill=None, must=False,
+                        routed=[None, "acs:code", None], control=True)
+        self.assertEqual(noisy["aggregate"]["reliability"]["hits"], 2)
+
+    def test_a_registration_canary_that_misses_is_critical(self):
+        m = {"probes": [routing("CONTROL-registration-canary", "acs:setup",
+                                routed=["acs:setup", None, "acs:setup"],
+                                control=True)]}
+        f = pg.compare(m, None, PROVISIONAL)
+        self.assertEqual([x["severity"] for x in f], ["critical"])
+        self.assertIn("instrument", f[0]["summary"])
+        state, headline, _ = pg.verdict(m, None, PROVISIONAL, f)
+        self.assertEqual(state, "fail")
+        self.assertIn("critical", headline)
+
+    def test_an_unregistered_command_that_registers_is_critical(self):
+        m = {"probes": [routing("CONTROL-unregistered-command",
+                                "acs:no-such-skill", must=False,
+                                routed=["acs:no-such-skill", None, None],
+                                control=True)]}
+        f = pg.compare(m, None, PROVISIONAL)
+        self.assertEqual([x["severity"] for x in f], ["critical"])
+
+    def test_a_passing_control_is_silent(self):
+        m = {"probes": [
+            routing("CONTROL-registration-canary", "acs:setup", control=True),
+            routing("CONTROL-unregistered-command", "acs:no-such-skill",
+                    must=False, routed=[None] * 3, control=True),
+            routing("CONTROL-off-domain", None, must=False, routed=[None] * 3,
+                    control=True)]}
+        self.assertEqual(pg.compare(m, None, PROVISIONAL), [])
 
     def test_a_clean_first_measurement_is_uncompared_never_passed(self):
         m = measurement([routing(), pipeline()])

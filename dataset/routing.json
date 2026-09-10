@@ -1,7 +1,7 @@
 {
-  "description": "Routing probes for all 25 acs skills. 23 are model-invocable and get one natural-language request that must route to them without naming them. The 2 user-only skills (disable-model-invocation:true) get a pair each: an explicit invocation that MUST route, and a bare description of their intent that must NOT.\n\nThis file is the curated data. runner/gen_plugin_eval.py renders it into evals/**/case.yaml for `claude plugin eval`; dataset/cases/10-skills.json pins the routing SURFACE (each skill's shipped description and invocation flag) deterministically, with no model.",
+  "description": "Routing probes for all 25 acs skills. 23 are model-invocable and get one natural-language request that must route to them without naming them. The 2 user-only skills (disable-model-invocation:true) get a pair each: an explicit invocation that MUST route, and a bare description of their intent that must NOT.\n\nThis file is the curated data. runner/gen_plugin_eval.py renders it into evals/**/case.yaml for `claude plugin eval`; dataset/cases/10-skills.json pins the routing SURFACE (each skill's shipped description and invocation flag) deterministically, with no model.\n\nThree CONTROL probes test the instrument rather than the plugin: a registration canary that must hit, an unregistered command that must miss, and an off-domain request that must route nowhere. Without them a suite where nothing can pass and one where nothing can fail are indistinguishable from a pass count. Controls are not rendered into `claude plugin eval` cases.",
   "skill_count": 25,
-  "probe_count": 27,
+  "probe_count": 30,
   "probes": [
     {
       "id": "ROUTE-code",
@@ -15,7 +15,7 @@
       "id": "ROUTE-create-architecture",
       "skill": "acs:create-architecture",
       "kind": "positive",
-      "prompt": "We have a PRD now. Draw up the system architecture docs \u2014 the C4 views and the key flows.",
+      "prompt": "We have a PRD now. Draw up the system architecture docs — the C4 views and the key flows.",
       "must_route": true,
       "why": "A natural-language request in the skill's domain, never naming the skill."
     },
@@ -135,7 +135,7 @@
       "id": "ROUTE-metrics",
       "skill": "acs:metrics",
       "kind": "positive",
-      "prompt": "Show me our delivery throughput \u2014 how many tickets are done, and how the pipeline is converting.",
+      "prompt": "Show me our delivery throughput — how many tickets are done, and how the pipeline is converting.",
       "must_route": true,
       "why": "A natural-language request in the skill's domain, never naming the skill."
     },
@@ -151,7 +151,7 @@
       "id": "ROUTE-setup",
       "skill": "acs:setup",
       "kind": "positive",
-      "prompt": "Configure acs for this repository \u2014 ticket prefix, coverage target, merge strategy.",
+      "prompt": "Configure acs for this repository — ticket prefix, coverage target, merge strategy.",
       "must_route": true,
       "why": "A natural-language request in the skill's domain, never naming the skill."
     },
@@ -218,6 +218,31 @@
       "prompt": "Check whether there is a newer version of the acs plugin available.",
       "must_route": false,
       "why": "The no-auto-invoke guarantee: a bare description of this skill's intent must NOT route to it."
+    },
+    {
+      "id": "CONTROL-registration-canary",
+      "skill": "acs:setup",
+      "kind": "control",
+      "prompt": "/acs:setup",
+      "must_route": true,
+      "why": "Deterministic canary, decided at the init event with no model turn: the CLI must list the plugin's commands. If this misses, the session cannot see the plugin at all and every paid probe would be measuring an absence — the failure that hid all 22 routes for three paid runs in September 2026. measure_skills runs it before spending anything."
+    },
+    {
+      "id": "CONTROL-unregistered-command",
+      "skill": "acs:no-such-skill",
+      "kind": "control",
+      "prompt": "/acs:no-such-skill",
+      "must_route": false,
+      "why": "A detector that reported every explicit probe as registered would pass the canary and both explicit probes alike. This command does not exist, so it must miss; a hit here means the instrument is lying, not that the plugin grew a skill."
+    },
+    {
+      "id": "CONTROL-off-domain",
+      "skill": null,
+      "kind": "control",
+      "prompt": "Write a four-line poem about the sea.",
+      "must_route": false,
+      "why": "A request with nothing to do with software delivery must invoke no skill at all. Routing it anywhere is over-triggering by the plugin's descriptions; reporting a skill here when none fired is a lying detector. Either way the surrounding measurement cannot be read."
     }
-  ]
+  ],
+  "control_count": 3
 }

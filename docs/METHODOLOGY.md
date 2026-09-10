@@ -99,7 +99,11 @@ The two explicit probes (`/acs:install-hooks`, `/acs:update`) cannot be seen
 that way — a typed slash command is expanded by the CLI and never dispatched
 through the `Skill` tool — so they are decided at the `init` event's
 `slash_commands` list and killed there, before any model turn; each run records
-its `detection` rule so the two kinds are never read as one.
+its `detection` rule so the two kinds are never read as one. Three **control**
+probes with known answers (a registration canary, an unregistered command, an
+off-domain request) check the instrument itself, and the free ones run as a
+pre-flight that refuses to spend when the sandbox cannot see the plugin — the
+failure mode that produced 22 phantom misses per paid run before it was found.
 Its decision rule is stated in [`PERFORMANCE.md`](PERFORMANCE.md) — a positive
 probe passes only if it routes on **all** runs, a split result is a finding, and
 a negative probe that auto-invokes even once is `critical`. That answers the

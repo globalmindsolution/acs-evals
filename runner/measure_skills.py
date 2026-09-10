@@ -8,7 +8,7 @@ and judging are two acts, so a measurement taken once can be re-judged under
 new thresholds without paying for it again.
 
     python3 runner/measure_skills.py --dry-run        # the plan, no spending
-    python3 runner/measure_skills.py --routing-only   # cheap tier: 27 probes
+    python3 runner/measure_skills.py --routing-only   # cheap tier: 30 probes
     python3 runner/measure_skills.py                  # everything
 
 Two measurement notes that decide how the numbers may be read:
@@ -25,6 +25,13 @@ Two measurement notes that decide how the numbers may be read:
   observed as *registered*: the `init` event's `slash_commands` list. Those
   probes are killed at `init`, before any model turn. Every run records how it
   was decided in `detection`, so a measurement never mixes the two up.
+* **The instrument is checked before the plugin is.** Three CONTROL probes in
+  `routing.json` have known answers — a registration canary that must hit, an
+  unregistered command that must miss, an off-domain request that must route
+  nowhere. The free ones (decided at `init`) run as a pre-flight before any
+  paid session; if one fails, nothing is spent and no measurement is written,
+  because a suite that cannot see the plugin would otherwise report 30 misses
+  as if they were routing results.
 * **Pipeline cost and quality come from acs's own ledger**, not from this
   script's observations: `<ticket>/<skill>-state.json` is what `/acs:usage`
   reads, so the evaluation and the product cannot disagree about what a run
@@ -231,6 +238,34 @@ def read_ledger(sandbox, skill):
 # The run
 # --------------------------------------------------------------------------
 
+def preflight(build, probes, env, timeout=60):
+    """Run the free controls once, before a single paid session starts.
+
+    Returns `(ok, checks)`. Only controls whose prompt is an explicit command
+    qualify — they are decided at `init`, so they cost nothing — and each is
+    judged by the same `summarize` rule the gate applies later, so pre-flight
+    and gate cannot disagree about what a control must produce.
+    """
+    controls = [p for p in probes
+                if p.get("kind") == "control" and explicit_skill(p["prompt"])]
+    checks = []
+    if not controls:
+        return True, checks
+    with Sandbox(build, profile="bare") as sb:
+        for probe in controls:
+            routed, detection, seconds = route_once(probe["prompt"], sb.repo,
+                                                    timeout, env)
+            rec = {"kind": "routing", "skill": probe["skill"],
+                   "expect": {"must_route": probe.get("must_route", True),
+                              "skill": probe["skill"], "control": True},
+                   "runs": [{"ok": True, "routed_to": routed}]}
+            passed = summarize(rec)["reliability"]["hits"] == 1
+            checks.append({"id": probe["id"], "routed_to": routed,
+                           "detection": detection, "seconds": seconds,
+                           "passed": passed})
+    return all(c["passed"] for c in checks), checks
+
+
 def measure_routing(build, scenarios, probes, env, limit=None):
     conf = scenarios["routing"]
     runs_per = limit or conf.get("runs_per_probe", 5)
@@ -249,7 +284,8 @@ def measure_routing(build, scenarios, probes, env, limit=None):
                    "skill": probe["skill"],
                    "expect": {"must_route": probe.get("must_route", True),
                               "skill": probe["skill"],
-                              "explicit": explicit_skill(probe["prompt"]) is not None},
+                              "explicit": explicit_skill(probe["prompt"]) is not None,
+                              "control": probe.get("kind") == "control"},
                    "runs": runs}
             rec["aggregate"] = summarize(rec)
             hits = rec["aggregate"]["reliability"]
@@ -312,11 +348,15 @@ def claude_version():
 def plan(scenarios, probes, routing_only, pipeline_only, limit):
     """What a run would cost, in sessions. Printed before anything is spent."""
     lines, sessions = [], 0
+    free = [p for p in probes
+            if p.get("kind") == "control" and explicit_skill(p["prompt"])]
+    lines.append("  preflight %d free control probes before any paid session"
+                 % len(free))
     if not pipeline_only:
         n = limit or scenarios["routing"].get("runs_per_probe", 5)
         lines.append("  routing   %d probes x %d runs = %d sessions "
-                     "(killed at first Skill call)" % (len(probes), n,
-                                                       len(probes) * n))
+                     "(killed at first Skill call, or at init for explicit "
+                     "probes)" % (len(probes), n, len(probes) * n))
         sessions += len(probes) * n
     if not routing_only:
         n = limit or scenarios["pipeline"].get("runs_per_scenario", 3)
@@ -340,12 +380,16 @@ def main():
                     help="override runs per probe (1 is cheap and NOISY — a "
                          "single run cannot satisfy the routing decision rule)")
     ap.add_argument("--probe", default=None, help="glob-filter routing probes")
+    ap.add_argument("--skip-preflight", action="store_true",
+                    help="spend without first proving the sandbox can see the "
+                         "plugin (only for debugging the pre-flight itself)")
     args = ap.parse_args()
 
     with open(SCENARIOS) as fh:
         scenarios = json.load(fh)
     with open(ROUTING) as fh:
-        probes = json.load(fh)["probes"]
+        all_probes = json.load(fh)["probes"]
+    probes = all_probes
     if args.probe:
         import fnmatch
         probes = [p for p in probes if fnmatch.fnmatch(p["id"], args.probe)]
@@ -373,6 +417,27 @@ def main():
     env = dict(os.environ)
     print("\nbuild under test: acs %s\n" % build.version)
     started = time.time()
+
+    # The instrument is checked before the plugin is: a sandbox that cannot
+    # see the plugin would otherwise report every probe as a miss and charge
+    # for it. Free (decided at init), and it refuses to write a measurement.
+    preflight_doc = {"ok": True, "checks": [], "skipped": bool(args.skip_preflight)}
+    if not args.skip_preflight:
+        ok, checks = preflight(build, all_probes, env)
+        preflight_doc = {"ok": ok, "checks": checks, "skipped": False}
+        for c in checks:
+            print("  preflight %-32s %s  (%s, %.1fs)"
+                  % (c["id"], "ok" if c["passed"] else "FAILED",
+                     c["detection"], c["seconds"]))
+        if not ok:
+            sys.stderr.write(
+                "\nerror: pre-flight failed — the sandbox cannot see the "
+                "plugin the way a consumer's claude would (see the checks "
+                "above). Nothing was spent and no measurement was written; a "
+                "measurement taken now would record 30 misses that are not "
+                "routing results.\n")
+            return 3
+        print()
     records = []
     if not args.pipeline_only:
         records += measure_routing(build, scenarios, probes, env, args.runs)
@@ -396,7 +461,8 @@ def main():
         "build": {"version": build.version, "root": build.root},
         "scenario_set_version": scenarios["scenario_set_version"],
         "environment": {"claude_cli_version": claude_version(),
-                        "host": sys.platform},
+                        "host": sys.platform,
+                        "preflight": preflight_doc},
         "incomplete": incomplete,
         "probes": records,
     }

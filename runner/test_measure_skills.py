@@ -15,7 +15,8 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from measure_skills import classify, explicit_skill  # noqa: E402
+from measure_skills import classify, explicit_skill, plan  # noqa: E402
+from gen_plugin_eval import renderable  # noqa: E402
 from perf_gate import summarize  # noqa: E402
 
 
@@ -129,6 +130,45 @@ class ExplicitProbeTest(unittest.TestCase):
         lines = [_init(commands=("other:install-hooks", "install-hooks"))]
         self.assertEqual(classify(lines, "/acs:install-hooks"),
                          (None, "registered"))
+
+
+class ControlProbeTest(unittest.TestCase):
+    """The three controls have known answers; the dataset must carry them."""
+
+    def setUp(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(os.path.dirname(here), "dataset", "routing.json")
+        self.probes = json.load(open(path))["probes"]
+        self.controls = [p for p in self.probes if p.get("kind") == "control"]
+
+    def test_the_dataset_ships_all_three_controls(self):
+        ids = sorted(p["id"] for p in self.controls)
+        self.assertEqual(ids, ["CONTROL-off-domain",
+                               "CONTROL-registration-canary",
+                               "CONTROL-unregistered-command"])
+
+    def test_the_two_explicit_controls_are_free(self):
+        free = [p["id"] for p in self.controls if explicit_skill(p["prompt"])]
+        self.assertEqual(sorted(free), ["CONTROL-registration-canary",
+                                        "CONTROL-unregistered-command"])
+
+    def test_controls_are_never_rendered_as_plugin_eval_cases(self):
+        self.assertTrue(all(not renderable(p) for p in self.controls))
+        self.assertTrue(all(renderable(p) for p in self.probes
+                            if p.get("kind") != "control"))
+
+    def test_the_off_domain_control_routes_nowhere_by_definition(self):
+        off = [p for p in self.controls if p["id"] == "CONTROL-off-domain"][0]
+        self.assertIsNone(off["skill"])
+        self.assertFalse(off["must_route"])
+        self.assertIsNone(explicit_skill(off["prompt"]))
+
+    def test_the_plan_names_the_preflight_before_any_session(self):
+        text = plan({"routing": {"runs_per_probe": 5},
+                     "pipeline": {"runs_per_scenario": 3, "scenarios": []}},
+                    self.probes, True, False, None)
+        self.assertIn("preflight 2 free control probes", text)
+        self.assertIn("30 probes x 5 runs = 150 sessions", text)
 
 
 class GateReadsDetectionHonestlyTest(unittest.TestCase):

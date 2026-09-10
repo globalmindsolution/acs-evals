@@ -89,9 +89,14 @@ def summarize(probe):
         want = expect.get("skill") or probe.get("skill")
         must = expect.get("must_route", True)
         # A negative probe scores a hit when the skill did NOT fire, so both
-        # kinds read as "higher is better" and one floor covers both.
-        hits = sum(1 for r in runs
-                   if (r.get("routed_to") == want) == bool(must))
+        # kinds read as "higher is better" and one floor covers both. A probe
+        # that names no skill at all (the off-domain control) fires when ANY
+        # skill routed: the answer it must produce is "nothing".
+        def fired(run):
+            if want is None:
+                return run.get("routed_to") is not None
+            return run.get("routed_to") == want
+        hits = sum(1 for r in runs if fired(r) == bool(must))
     else:
         hits = sum(1 for r in runs if r.get("ok"))
     agg["reliability"] = {
@@ -181,21 +186,36 @@ def compare(measurement, baseline, thresholds):
                 pid, "reliability", "major",
                 "no runs recorded — the probe did not execute"))
         elif kind == "routing":
-            negative = not (probe.get("expect") or {}).get("must_route", True)
-            key = ("routing_negative_accuracy_floor" if negative
-                   else "routing_positive_accuracy_floor")
+            expect = probe.get("expect") or {}
+            negative = not expect.get("must_route", True)
+            control = bool(expect.get("control"))
+            if control:
+                # A control's answer is known in advance; missing it says the
+                # instrument is broken, and nothing measured around it can be
+                # read. That is why its floor carries its own severity.
+                key = "routing_control_floor"
+            else:
+                key = ("routing_negative_accuracy_floor" if negative
+                       else "routing_positive_accuracy_floor")
             spec = rel.get(key, {})
             floor = spec.get("value", 1.0)
             if rate is not None and rate < floor:
+                if control:
+                    summary = ("control failed on %d of %d runs (floor %.0f%%) "
+                               "— the instrument, not the plugin, is suspect; "
+                               "no other probe in this measurement can be read"
+                               % (total - r.get("hits", 0), total, floor * 100))
+                else:
+                    summary = ("%s on %d of %d runs (floor %.0f%%)"
+                               % ("auto-invoked despite disable-model-invocation"
+                                  if negative else "routed to the expected skill",
+                                  r.get("hits", 0) if not negative
+                                  else total - r.get("hits", 0),
+                                  total, floor * 100))
                 findings.append(_finding(
-                    pid, "reliability", spec.get("severity", "major"),
-                    "%s on %d of %d runs (floor %.0f%%)"
-                    % ("auto-invoked despite disable-model-invocation"
-                       if negative else "routed to the expected skill",
-                       r.get("hits", 0) if not negative
-                       else total - r.get("hits", 0),
-                       total, floor * 100),
-                    observed=rate, threshold=floor))
+                    pid, "reliability",
+                    spec.get("severity", "critical" if control else "major"),
+                    summary, observed=rate, threshold=floor))
         else:
             spec = rel.get("pipeline_completion_floor", {})
             floor = spec.get("value", 1.0)

@@ -36,7 +36,7 @@
     },
     "scenario_set_version": {
       "type": "string",
-      "description": "From dataset/scenarios.json. A measurement may only be compared against a baseline carrying the SAME value \u2014 a changed scenario set is a changed experiment."
+      "description": "From dataset/scenarios.json. A measurement may only be compared against a baseline carrying the SAME value — a changed scenario set is a changed experiment."
     },
     "environment": {
       "type": "object",
@@ -65,6 +65,45 @@
         },
         "notes": {
           "type": "string"
+        },
+        "preflight": {
+          "type": "object",
+          "description": "The free, deterministic controls run before any paid session. A measurement is only written when every check passed.",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "routed_to": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "detection": {
+                    "enum": [
+                      "skill_tool_use",
+                      "registered",
+                      "unmeasured"
+                    ]
+                  },
+                  "seconds": {
+                    "type": "number"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -95,7 +134,11 @@
             ]
           },
           "skill": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The skill under test; null for a control whose known answer is that no skill fires."
           },
           "expect": {
             "type": "object",
@@ -104,11 +147,18 @@
                 "type": "boolean"
               },
               "skill": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "explicit": {
                 "type": "boolean",
                 "description": "True when the prompt is a typed `/acs:<skill>` command, which the CLI expands itself and never dispatches through the Skill tool."
+              },
+              "control": {
+                "type": "boolean",
+                "description": "True for a control probe: it tests the instrument (registration canary, unregistered command, off-domain request) and its floor carries its own severity."
               }
             }
           },
@@ -252,7 +302,7 @@
                     "registered",
                     "unmeasured"
                   ],
-                  "description": "How a routing run was decided: the first Skill tool_use (model routing), the init event's slash_commands list (CLI registration, explicit probes only), or unmeasured when an explicit probe's stream reported no registration list \u2014 a miss, never a pass."
+                  "description": "How a routing run was decided: the first Skill tool_use (model routing), the init event's slash_commands list (CLI registration, explicit probes only), or unmeasured when an explicit probe's stream reported no registration list — a miss, never a pass."
                 }
               }
             }

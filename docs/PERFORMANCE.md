@@ -73,8 +73,15 @@ rule is not a criterion.
   on **every** run. A split result is a finding, never a pass. Routing is
   stochastic; one green run is not evidence.
 - **Routing, negative probe** — passes only if the skill auto-invokes on **no**
-  run. This is the `disable-model-invocation` guarantee, and it is the one
-  `critical` in this tier.
+  run. This is the `disable-model-invocation` guarantee, and it is `critical`.
+- **Controls** — three probes whose answer is known before the run: a
+  registration canary (`/acs:setup`) that must hit, an unregistered command
+  (`/acs:no-such-skill`) that must miss, and an off-domain request (a poem)
+  that must route nowhere. They test the instrument, not the plugin, and a
+  failed control is `critical` because nothing measured around it can be
+  read. The two explicit controls also run as a free **pre-flight** before
+  any paid session: if the sandbox cannot see the plugin, `make measure`
+  stops there, spends nothing and writes no measurement.
 - **Cost, time, iterations, coverage** — compared as the **median** across
   runs, never a single run, so one timeout cannot move the number a release is
   judged on. The min/max spread is recorded alongside, because that spread is
@@ -109,7 +116,7 @@ generator; one far looser makes it decorative.
 | State | Condition |
 |---|---|
 | **UNMEASURED** | No measurement exists. Exit non-zero. |
-| **BLOCKED (critical)** | A `disable-model-invocation` skill auto-invoked. |
+| **BLOCKED (critical)** | A `disable-model-invocation` skill auto-invoked, or a control probe failed. |
 | **BLOCKED** | An absolute floor was crossed. |
 | **UNCOMPARED (baseline established)** | Floors held; first measurement for this scenario set, so nothing to compare. |
 | **PASSED (uncalibrated drift)** | A provisional relative threshold was crossed. Look, do not block. |
@@ -122,9 +129,9 @@ than a reader thinks, so it may never be green by having run nothing.
 ## Cost of the tier itself
 
 `make measure-plan` prints it before anything is spent. At the shipped scenario
-set that is **144 sessions**: 27 routing probes × 5 runs (each a few seconds,
-killed at the first `Skill` call, or at `init` for the two explicit probes)
-plus 3 pipeline scenarios × 3 runs (one of
+set that is **159 sessions**: 30 routing probes (27 routing, 3 controls) × 5
+runs (each a few seconds, killed at the first `Skill` call, or at `init` for
+the explicit probes and controls) plus 3 pipeline scenarios × 3 runs (one of
 which is a full `/acs:code` TDD cycle). `make measure-routing` runs the cheap
 half alone.
 

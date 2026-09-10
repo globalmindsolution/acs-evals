@@ -35,6 +35,16 @@ def block(text, indent="  "):
     return "\n".join(indent + line if line else "" for line in text.splitlines())
 
 
+def renderable(probe):
+    """Controls test the instrument, not the plugin; they have no tier-2 case.
+
+    `claude plugin eval` grades whether a skill fired, and a control's answer
+    is known in advance (a canary registers, a missing command does not, a
+    poem routes nowhere) — rendering one would only test the grader.
+    """
+    return probe.get("kind") != "control"
+
+
 def render(probe):
     """One case.yaml body for a routing probe."""
     skill = probe["skill"]
@@ -80,6 +90,8 @@ def main():
 
     stale, written = [], 0
     for probe in routing["probes"]:
+        if not renderable(probe):
+            continue
         path = os.path.join(EVALS, probe["id"].lower(), "case.yaml")
         body = render(probe)
         current = None

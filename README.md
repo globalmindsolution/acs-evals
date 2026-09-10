@@ -201,10 +201,25 @@ schemas themselves. The 103 that remain are mostly branches under
 so a single-constraint reject case would be unsound —
 `python3 runner/gen_schema_cases.py --report` lists them with reasons.
 
-The CLI tier has no automated equivalent (mutating it needs a writable copy of
-the build and a subprocess run per mutation). Spot-checked by hand, 6 of 7
-decision-table mutations were caught — including the verdict invariant, the
-readiness fail-closed path, gate messages and skill flags.
+The CLI tier has its own sweep, `make mutation-cli`: a writable copy of the
+build, one mutated decision site per run (comparisons negated or moved by one,
+`and`/`or` swapped, booleans flipped, `not` dropped, `if` tests negated,
+integers nudged), the CLI cases run against it, and a mutant counted killed
+when any case fails. It is slow (~15 s per mutant; 705 sites across eight
+`acs_lib` modules), so it samples — `MUTANTS=0 make mutation-cli` runs every
+site — and it lists each survivor for a human to read, because a survivor is a
+hole or an equivalent mutant and the tool cannot tell which. The measured
+number lives in `results/mutation-cli.json` and in the release report; it
+replaces the hand-run spot check (6 of 7 decision-table mutations caught) that
+used to stand in for one.
+
+`make verifier-rates WORKSPACE=<workspace>/<repo_id>` is the free reading on
+the plugin's quality mechanism: it tallies every verdict the code-verifier ever
+wrote (active partitions and `archive/`) per dimension — pass, fail, n/a,
+blocking and info findings — and names the dimensions that have never failed,
+which are either perfect or dead. It cannot say which; the seeded-defect
+catch-rate measurement in `docs/PERFORMANCE.md` can, and this table says where
+to spend it.
 
 ## Known divergences
 

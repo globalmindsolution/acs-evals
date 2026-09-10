@@ -11,6 +11,8 @@
 #   make gate ACS_PLUGIN_ROOT=~/src/gms-marketplace/plugins/acs
 
 PYTHON  ?= python3
+MUTANTS ?= 40
+WORKSPACE ?= ../gms-marketplace/.acs/state-machine/globalmindsolution-gms-marketplace
 RESULTS ?= results
 JSON    ?= $(RESULTS)/latest.json
 REPORT  ?= $(RESULTS)/report
@@ -50,6 +52,8 @@ perf: ## Judge the last measurement against the baseline (pure; no model, no cos
 perf-test: ## Self-test the tier-3 comparator's decision rules
 	$(PYTHON) runner/test_perf_gate.py
 	$(PYTHON) runner/test_measure_skills.py
+	$(PYTHON) runner/test_mutation_cli.py
+	$(PYTHON) runner/test_verifier_rates.py
 
 report: ## Render report.md + report.html from the last run
 	$(PYTHON) runner/report.py --json $(JSON) --out $(REPORT)
@@ -62,6 +66,12 @@ generate: ## Re-render both generated trees (routing cases, schema constraint ca
 	$(PYTHON) runner/gen_plugin_eval.py
 	$(PYTHON) runner/gen_schema_cases.py
 
+mutation-cli: ## Measure CLI-tier coverage by mutating the plugin's decision code (slow: ~10s per mutant)
+	$(PYTHON) runner/mutation_cli.py --max-mutants $(MUTANTS)
+
+verifier-rates: ## Per-dimension verifier finding rates from an acs workspace (WORKSPACE=<workspace>/<repo_id>)
+	$(PYTHON) runner/verifier_rates.py --workspace $(WORKSPACE) --json results/verifier-rates.json
+
 mutation: ## Measure schema coverage by deleting each constraint (must stay >= 50%)
 	$(PYTHON) runner/mutation_sweep.py --threshold 0.5
 
@@ -72,6 +82,8 @@ verify-self: ## Byte-compile the runner, parse every dataset file, self-test the
 	$(PYTHON) -m py_compile runner/*.py
 	$(PYTHON) runner/test_perf_gate.py
 	$(PYTHON) runner/test_measure_skills.py
+	$(PYTHON) runner/test_mutation_cli.py
+	$(PYTHON) runner/test_verifier_rates.py
 	@$(PYTHON) -c "import glob,json,sys; \
 	  [json.load(open(f)) for f in glob.glob('dataset/**/*.json', recursive=True)]; \
 	  print('dataset: all JSON parses')"

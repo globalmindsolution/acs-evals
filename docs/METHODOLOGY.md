@@ -60,9 +60,18 @@ make mutation                                # the current number
 python3 runner/mutation_sweep.py --holes     # every constraint nothing pins
 ```
 
-The CLI tier has **no automated equivalent**. Its coverage claim rests on a
-hand-run spot check of seven decision-table mutations, six of which were caught.
-That is evidence, not a measurement, and it should not be quoted as one.
+The CLI tier's equivalent is `runner/mutation_cli.py` (`make mutation-cli`).
+It copies the build, mutates one decision site in one `acs_lib` module — a
+comparison negated or moved by one, `and`/`or` swapped, a boolean flipped, a
+`not` dropped, an `if` test negated, an integer nudged — runs the CLI cases
+against the copy through `ACS_PLUGIN_ROOT`, and counts the mutant killed if any
+case fails. It runs the unmutated copy first as a control and refuses to report
+a number when that fails. The number is a **kill rate over a seeded sample**
+(705 sites across eight modules at 0.4.9; ~15 s per mutant, so the default
+sample is 40): quote it with its sample size, and read the survivors it lists —
+a survivor is a hole or an equivalent mutant, and the tool cannot tell which.
+This replaces the hand-run spot check of seven decision-table mutations (six
+caught) that used to stand in for a measurement here.
 
 ## Threats to validity
 

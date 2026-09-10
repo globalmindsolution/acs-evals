@@ -104,6 +104,12 @@ override the gate. So while `dataset/thresholds.json` carries
 verdict for that state is `PASSED (uncalibrated drift)` — a prompt to look, not
 a claim of a defect.
 
+A measurement records its `scope` — `full`, `routing` or `pipeline` — and is
+`incomplete` only when it did not finish that scope. A routing-scoped run that
+finished is promotable as `dataset/baselines/acs-<version>-routing.json`; the
+gate compares routing probes against it, names the partial scope in its
+verdict, and a full baseline supersedes it.
+
 `calibration_protocol` in that file is how they stop being provisional: run
 `make measure` repeatedly against one unchanged build, and the spread that
 produces is the tier's noise floor. Set each ratio outside it with margin,

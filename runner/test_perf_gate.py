@@ -143,6 +143,16 @@ class TestAbsoluteGates(unittest.TestCase):
                     control=True)]}
         self.assertEqual(pg.compare(m, None, PROVISIONAL), [])
 
+    def test_a_routing_scoped_baseline_is_named_in_the_verdict(self):
+        m = {"probes": [routing(), pipeline()], "scope": "full"}
+        base = {"probes": [routing(seconds=4.0)], "scope": "routing",
+                "scenario_set_version": None}
+        f = pg.compare(m, base, PROVISIONAL)
+        self.assertEqual(f, [])
+        state, _headline, detail = pg.verdict(m, base, PROVISIONAL, f)
+        self.assertEqual(state, "pass")
+        self.assertIn("routing-scoped", detail)
+
     def test_a_clean_first_measurement_is_uncompared_never_passed(self):
         m = measurement([routing(), pipeline()])
         f = pg.compare(m, None, PROVISIONAL)

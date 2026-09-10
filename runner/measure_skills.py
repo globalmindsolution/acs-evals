@@ -444,14 +444,19 @@ def main():
     if not args.routing_only:
         records += measure_pipeline(build, scenarios, env, args.runs)
 
-    # A partial measurement is marked, not silently promoted: a baseline built
-    # from probes that half-ran would make every later comparison a lie.
+    # A run declares its scope up front — full, routing, or pipeline — and is
+    # marked incomplete only when it did not finish what it set out to do (a
+    # probe filter, or a probe that produced no runs). A routing-scoped run is
+    # a whole measurement of the cheap half, not half a measurement: it may be
+    # promoted as a routing-scoped baseline, which the gate then compares
+    # routing probes against and nothing else.
+    scope = ("routing" if args.routing_only
+             else "pipeline" if args.pipeline_only else "full")
     expected_routing = 0 if args.pipeline_only else len(probes)
     expected_pipeline = (0 if args.routing_only
                          else len(scenarios["pipeline"]["scenarios"]))
     incomplete = (len(records) != expected_routing + expected_pipeline
                   or any(r["aggregate"]["runs"] == 0 for r in records)
-                  or args.routing_only or args.pipeline_only
                   or bool(args.probe))
 
     doc = {
@@ -460,6 +465,7 @@ def main():
                                 .strftime("%Y-%m-%dT%H:%M:%SZ"),
         "build": {"version": build.version, "root": build.root},
         "scenario_set_version": scenarios["scenario_set_version"],
+        "scope": scope,
         "environment": {"claude_cli_version": claude_version(),
                         "host": sys.platform,
                         "preflight": preflight_doc},
@@ -478,6 +484,10 @@ def main():
     if incomplete:
         print("marked INCOMPLETE — a partial measurement may not be promoted "
               "to a baseline.")
+    elif scope != "full":
+        print("scope: %s — promotable as a %s-scoped baseline "
+              "(dataset/baselines/acs-<version>-%s.json); a full baseline "
+              "supersedes it." % (scope, scope, scope))
     print("judge it with: python3 runner/perf_gate.py --measurement %s"
           % args.out)
     return 0

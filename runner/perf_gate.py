@@ -322,6 +322,11 @@ def verdict(measurement, baseline, thresholds, findings):
                 "promoted to a baseline.")
     else:
         note = ""
+    base_scope = (baseline or {}).get("scope", "full")
+    if baseline is not None and base_scope != "full":
+        note += (" The baseline is %s-scoped: only %s probes have anything to "
+                 "compare against; a full `make measure` baseline supersedes "
+                 "it." % (base_scope, base_scope))
 
     if crit:
         return ("fail", "Skill performance: BLOCKED (critical)",

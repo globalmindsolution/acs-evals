@@ -259,15 +259,13 @@ Cases tagged `known_divergence` pin behaviour that differs from what the code's
 own contract states. They assert what the build **actually does**, so that
 closing the gap shows up as a loud failure rather than passing unnoticed.
 
-- **`VERDICT-009` / `VERDICT-014`** — `acs verdict show` does not enforce
-  iteration or skill freshness. `validate_verdict` implements both checks, but
-  this call site passes only `ticket_id`, so `--iteration 3` reports
-  `ok: true, passed: true` for a document whose own `iteration` is 1.
-  **Read-only:** the two call sites that decide anything — `acs_lib/derive.py`
-  (`verifier_passed`, which `gate_create_pr` reads) and `acs_lib/lifecycle.py`
-  (the SubagentStop hook) — both pass all three arguments, so no gate is
-  bypassed. If v0.4.10 wires the two arguments through, flip both cases to
-  expect exit 2.
+**None today.** The two the dataset shipped with — `VERDICT-009` /
+`VERDICT-014`, which pinned `acs verdict show` NOT enforcing iteration or
+skill freshness at its call site — were closed by MAR-573 (plugin `main`
+`a4c9cd4`): the cases now expect exit 2 and the refusal message, with the
+`known_divergence` blocks removed in the same change, exactly as the process
+prescribes. A dataset run against a build that lacks the fix goes red on
+those two cases (2 critical), which is the coupling working as intended.
 
 ## When a case fails
 

@@ -4,6 +4,10 @@
     python3 runner/gen_plugin_eval.py            # write evals/routing/**/case.yaml
     python3 runner/gen_plugin_eval.py --check    # fail if the tree is out of date
 
+A probe removed or renamed in the JSON has its rendered case REMOVED here, and
+--check fails on an orphan rather than reporting the tree up to date: a left-over
+case keeps asserting a routing claim the dataset has withdrawn.
+
 dataset/routing.json is the source of truth: the prompts and the skill each
 must (or must not) route to are curated there, reviewed there, and rendered
 from there. Editing a generated case.yaml by hand loses the edit on the next
@@ -20,6 +24,7 @@ confirm the day early access lands (`claude plugin eval --case route-code
 import argparse
 import json
 import os
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -88,11 +93,12 @@ def main():
     with open(ROUTING) as fh:
         routing = json.load(fh)
 
-    stale, written = [], 0
+    stale, written, expected = [], 0, set()
     for probe in routing["probes"]:
         if not renderable(probe):
             continue
         path = os.path.join(EVALS, probe["id"].lower(), "case.yaml")
+        expected.add(probe["id"].lower())
         body = render(probe)
         current = None
         if os.path.isfile(path):
@@ -108,7 +114,23 @@ def main():
             fh.write(body)
         written += 1
 
+    orphans = []
+    if os.path.isdir(EVALS):
+        for name in sorted(os.listdir(EVALS)):
+            if not os.path.isdir(os.path.join(EVALS, name)) or name in expected:
+                continue
+            orphans.append(name)
+            if not args.check:
+                shutil.rmtree(os.path.join(EVALS, name))
+
     if args.check:
+        if orphans:
+            print("orphaned — these have no probe in dataset/routing.json; "
+                  "re-run runner/gen_plugin_eval.py to remove them:", file=sys.stderr)
+            for name in orphans:
+                print("  %s" % os.path.relpath(os.path.join(EVALS, name), REPO_ROOT),
+                      file=sys.stderr)
+            return 1
         if stale:
             print("out of date — re-run runner/gen_plugin_eval.py:", file=sys.stderr)
             for path in stale:
@@ -118,8 +140,9 @@ def main():
               "(%d probes)" % len(routing["probes"]))
         return 0
 
-    print("rendered %d probe(s), %d file(s) changed, into %s"
-          % (len(routing["probes"]), written, os.path.relpath(EVALS, REPO_ROOT)))
+    print("rendered %d probe(s), %d file(s) changed, %d orphan(s) removed, into %s"
+          % (len(routing["probes"]), written, len(orphans),
+             os.path.relpath(EVALS, REPO_ROOT)))
     return 0
 
 

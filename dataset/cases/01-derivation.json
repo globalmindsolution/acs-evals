@@ -693,7 +693,7 @@
     },
     {
       "id": "FANOUT-001",
-      "title": "create-quality and create-operations are the one parallel docs batch",
+      "title": "all four doc sets fan out, in two batches: standards waits on principles (the declared soft edge)",
       "invoke": {
         "argv": [
           "fanout",
@@ -706,7 +706,11 @@
           "batches": [
             [
               "create-quality",
-              "create-operations"
+              "create-operations",
+              "create-principles"
+            ],
+            [
+              "create-standards"
             ]
           ]
         }

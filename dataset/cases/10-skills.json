@@ -1,12 +1,30 @@
 {
   "group": "skill inventory and routing surface",
-  "description": "All 25 shipped skills, checked deterministically. What a skill ROUTES on is its frontmatter \u2014 the `description` Claude matches against, and `disable-model-invocation`, which decides whether it may be auto-invoked at all. Both are packaged data, so both are assertable with no model and no cost.\n\nThis catches the failure the paid routing tier cannot: a skill that stops shipping, loses its description, or silently gains/loses its user-only flag. The behavioural half \u2014 does a real request actually route here \u2014 lives in dataset/routing.json and the evals/ tier.",
+  "description": "All 32 shipped skills, checked deterministically. What a skill ROUTES on is its frontmatter — the `description` Claude matches against, and `disable-model-invocation`, which decides whether it may be auto-invoked at all. Both are packaged data, so both are assertable with no model and no cost.\n\nThis catches the failure the paid routing tier cannot: a skill that stops shipping, loses its description, or silently gains/loses its user-only flag. The behavioural half — does a real request actually route here — lives in dataset/routing.json and the evals/ tier.",
   "surface": "skills/*/SKILL.md",
   "covers": [
     "MAR-526"
   ],
   "profile": "bare",
   "cases": [
+    {
+      "id": "SKILL-analyze-ticket",
+      "kind": "skill_manifest",
+      "skill": "analyze-ticket",
+      "title": "analyze-ticket: ships as a model-invocable skill with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "analyze-ticket"
+        },
+        "frontmatter_nonempty": [
+          "description"
+        ],
+        "frontmatter_absent": [
+          "disable-model-invocation"
+        ]
+      }
+    },
     {
       "id": "SKILL-code",
       "kind": "skill_manifest",
@@ -16,6 +34,24 @@
         "present": true,
         "frontmatter": {
           "name": "code"
+        },
+        "frontmatter_nonempty": [
+          "description"
+        ],
+        "frontmatter_absent": [
+          "disable-model-invocation"
+        ]
+      }
+    },
+    {
+      "id": "SKILL-create-api-contract",
+      "kind": "skill_manifest",
+      "skill": "create-api-contract",
+      "title": "create-api-contract: ships as a model-invocable skill with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "create-api-contract"
         },
         "frontmatter_nonempty": [
           "description"
@@ -80,20 +116,54 @@
       }
     },
     {
-      "id": "SKILL-create-operations",
+      "id": "SKILL-create-e2e-tests",
       "kind": "skill_manifest",
-      "skill": "create-operations",
-      "title": "create-operations: ships as a model-invocable skill with a routing description",
+      "skill": "create-e2e-tests",
+      "title": "create-e2e-tests: ships as a model-invocable skill with a routing description",
       "expect": {
         "present": true,
         "frontmatter": {
-          "name": "create-operations"
+          "name": "create-e2e-tests"
         },
         "frontmatter_nonempty": [
           "description"
         ],
         "frontmatter_absent": [
           "disable-model-invocation"
+        ]
+      }
+    },
+    {
+      "id": "SKILL-create-impl-plan",
+      "kind": "skill_manifest",
+      "skill": "create-impl-plan",
+      "title": "create-impl-plan: ships as a model-invocable skill with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "create-impl-plan"
+        },
+        "frontmatter_nonempty": [
+          "description"
+        ],
+        "frontmatter_absent": [
+          "disable-model-invocation"
+        ]
+      }
+    },
+    {
+      "id": "SKILL-create-operations",
+      "kind": "skill_manifest",
+      "skill": "create-operations",
+      "title": "create-operations: ships as an internal leg — not model-invocable — with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "create-operations",
+          "disable-model-invocation": "true"
+        },
+        "frontmatter_nonempty": [
+          "description"
         ]
       }
     },
@@ -137,17 +207,15 @@
       "id": "SKILL-create-principles",
       "kind": "skill_manifest",
       "skill": "create-principles",
-      "title": "create-principles: ships as a model-invocable skill with a routing description",
+      "title": "create-principles: ships as an internal leg — not model-invocable — with a routing description",
       "expect": {
         "present": true,
         "frontmatter": {
-          "name": "create-principles"
+          "name": "create-principles",
+          "disable-model-invocation": "true"
         },
         "frontmatter_nonempty": [
           "description"
-        ],
-        "frontmatter_absent": [
-          "disable-model-invocation"
         ]
       }
     },
@@ -155,17 +223,15 @@
       "id": "SKILL-create-project",
       "kind": "skill_manifest",
       "skill": "create-project",
-      "title": "create-project: ships as a model-invocable skill with a routing description",
+      "title": "create-project: ships as an internal leg — not model-invocable — with a routing description",
       "expect": {
         "present": true,
         "frontmatter": {
-          "name": "create-project"
+          "name": "create-project",
+          "disable-model-invocation": "true"
         },
         "frontmatter_nonempty": [
           "description"
-        ],
-        "frontmatter_absent": [
-          "disable-model-invocation"
         ]
       }
     },
@@ -173,17 +239,15 @@
       "id": "SKILL-create-quality",
       "kind": "skill_manifest",
       "skill": "create-quality",
-      "title": "create-quality: ships as a model-invocable skill with a routing description",
+      "title": "create-quality: ships as an internal leg — not model-invocable — with a routing description",
       "expect": {
         "present": true,
         "frontmatter": {
-          "name": "create-quality"
+          "name": "create-quality",
+          "disable-model-invocation": "true"
         },
         "frontmatter_nonempty": [
           "description"
-        ],
-        "frontmatter_absent": [
-          "disable-model-invocation"
         ]
       }
     },
@@ -209,11 +273,27 @@
       "id": "SKILL-create-standards",
       "kind": "skill_manifest",
       "skill": "create-standards",
-      "title": "create-standards: ships as a model-invocable skill with a routing description",
+      "title": "create-standards: ships as an internal leg — not model-invocable — with a routing description",
       "expect": {
         "present": true,
         "frontmatter": {
-          "name": "create-standards"
+          "name": "create-standards",
+          "disable-model-invocation": "true"
+        },
+        "frontmatter_nonempty": [
+          "description"
+        ]
+      }
+    },
+    {
+      "id": "SKILL-create-test-docs",
+      "kind": "skill_manifest",
+      "skill": "create-test-docs",
+      "title": "create-test-docs: ships as a model-invocable skill with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "create-test-docs"
         },
         "frontmatter_nonempty": [
           "description"
@@ -281,7 +361,7 @@
       "id": "SKILL-install-hooks",
       "kind": "skill_manifest",
       "skill": "install-hooks",
-      "title": "install-hooks: ships, and is USER-ONLY \u2014 it may never be model-invoked",
+      "title": "install-hooks: ships, and is USER-ONLY — it may never be model-invoked",
       "expect": {
         "present": true,
         "frontmatter": {
@@ -331,6 +411,24 @@
       }
     },
     {
+      "id": "SKILL-project",
+      "kind": "skill_manifest",
+      "skill": "project",
+      "title": "project: ships as a model-invocable skill with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "project"
+        },
+        "frontmatter_nonempty": [
+          "description"
+        ],
+        "frontmatter_absent": [
+          "disable-model-invocation"
+        ]
+      }
+    },
+    {
       "id": "SKILL-release",
       "kind": "skill_manifest",
       "skill": "release",
@@ -339,6 +437,24 @@
         "present": true,
         "frontmatter": {
           "name": "release"
+        },
+        "frontmatter_nonempty": [
+          "description"
+        ],
+        "frontmatter_absent": [
+          "disable-model-invocation"
+        ]
+      }
+    },
+    {
+      "id": "SKILL-run-e2e-tests",
+      "kind": "skill_manifest",
+      "skill": "run-e2e-tests",
+      "title": "run-e2e-tests: ships as a model-invocable skill with a routing description",
+      "expect": {
+        "present": true,
+        "frontmatter": {
+          "name": "run-e2e-tests"
         },
         "frontmatter_nonempty": [
           "description"
@@ -388,17 +504,15 @@
       "id": "SKILL-standardize-project",
       "kind": "skill_manifest",
       "skill": "standardize-project",
-      "title": "standardize-project: ships as a model-invocable skill with a routing description",
+      "title": "standardize-project: ships as an internal leg — not model-invocable — with a routing description",
       "expect": {
         "present": true,
         "frontmatter": {
-          "name": "standardize-project"
+          "name": "standardize-project",
+          "disable-model-invocation": "true"
         },
         "frontmatter_nonempty": [
           "description"
-        ],
-        "frontmatter_absent": [
-          "disable-model-invocation"
         ]
       }
     },
@@ -424,7 +538,7 @@
       "id": "SKILL-update",
       "kind": "skill_manifest",
       "skill": "update",
-      "title": "update: ships, and is USER-ONLY \u2014 it may never be model-invoked",
+      "title": "update: ships, and is USER-ONLY — it may never be model-invoked",
       "expect": {
         "present": true,
         "frontmatter": {

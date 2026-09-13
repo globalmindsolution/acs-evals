@@ -531,7 +531,7 @@
     },
     {
       "id": "GATE-027",
-      "title": "ticketed: /code opens",
+      "title": "ticketed: /code is blocked \u2014 no plan.md \u2014 run /acs:create-impl-plan TKT-1 first.",
       "profile": "ticketed",
       "invoke": {
         "argv": [
@@ -543,17 +543,20 @@
         ]
       },
       "expect": {
-        "exit_code": 0,
+        "exit_code": 2,
         "stdout_json_subset": {
-          "ok": true,
-          "exit_code": 0,
+          "ok": false,
+          "exit_code": 2,
           "skill": "code"
-        }
+        },
+        "stderr_contains": [
+          "acs pre-code: blocked \u2014 no plan.md found for TKT-1 (looked in the ticket's docs folder and in <WS>/TKT-1) \u2014 run /acs:create-impl-plan TKT-1 first."
+        ]
       }
     },
     {
       "id": "GATE-028",
-      "title": "ticketed: /docs-sync is blocked \u2014 /code has not run for TKT-1 \u2014 run /acs:code TKT-1 first.",
+      "title": "ticketed: /docs-sync opens out of order, with the ship.yaml advisory on stderr",
       "profile": "ticketed",
       "invoke": {
         "argv": [
@@ -565,16 +568,20 @@
         ]
       },
       "expect": {
-        "exit_code": 2,
+        "exit_code": 0,
+        "stdout_json": {
+          "exit_code": 0,
+          "ok": true,
+          "skill": "docs-sync"
+        },
         "stderr_contains": [
-          "acs pre-docs-sync: blocked",
-          "/code has not run for TKT-1 \u2014 run /acs:code TKT-1 first."
+          "acs: docs-sync normally follows code in ship.yaml; code has not completed for TKT-1"
         ]
       }
     },
     {
       "id": "GATE-029",
-      "title": "ticketed: /create-pr is blocked \u2014 /code has not run for TKT-1 \u2014 run /acs:code TKT-1 first.",
+      "title": "ticketed: /create-pr opens out of order, with the ship.yaml advisory on stderr",
       "profile": "ticketed",
       "invoke": {
         "argv": [
@@ -586,10 +593,14 @@
         ]
       },
       "expect": {
-        "exit_code": 2,
+        "exit_code": 0,
+        "stdout_json": {
+          "exit_code": 0,
+          "ok": true,
+          "skill": "create-pr"
+        },
         "stderr_contains": [
-          "acs pre-create-pr: blocked",
-          "/code has not run for TKT-1 \u2014 run /acs:code TKT-1 first."
+          "acs: create-pr normally follows docs-sync and run-e2e-tests in ship.yaml; docs-sync and run-e2e-tests have not completed for TKT-1"
         ]
       }
     },
@@ -872,7 +883,7 @@
     },
     {
       "id": "GATE-043",
-      "title": "epic: /docs-sync is blocked \u2014 /code has not run for TKT-1 \u2014 run /acs:code TKT-1 first.",
+      "title": "epic: /docs-sync opens out of order, with the ship.yaml advisory on stderr",
       "profile": "epic",
       "invoke": {
         "argv": [
@@ -884,16 +895,20 @@
         ]
       },
       "expect": {
-        "exit_code": 2,
+        "exit_code": 0,
+        "stdout_json": {
+          "exit_code": 0,
+          "ok": true,
+          "skill": "docs-sync"
+        },
         "stderr_contains": [
-          "acs pre-docs-sync: blocked",
-          "/code has not run for TKT-1 \u2014 run /acs:code TKT-1 first."
+          "acs: docs-sync normally follows code in ship.yaml; code has not completed for TKT-1"
         ]
       }
     },
     {
       "id": "GATE-044",
-      "title": "epic: /create-pr is blocked \u2014 /code has not run for TKT-1 \u2014 run /acs:code TKT-1 first.",
+      "title": "epic: /create-pr opens out of order, with the ship.yaml advisory on stderr",
       "profile": "epic",
       "invoke": {
         "argv": [
@@ -905,10 +920,14 @@
         ]
       },
       "expect": {
-        "exit_code": 2,
+        "exit_code": 0,
+        "stdout_json": {
+          "exit_code": 0,
+          "ok": true,
+          "skill": "create-pr"
+        },
         "stderr_contains": [
-          "acs pre-create-pr: blocked",
-          "/code has not run for TKT-1 \u2014 run /acs:code TKT-1 first."
+          "acs: create-pr normally follows docs-sync and run-e2e-tests in ship.yaml; docs-sync and run-e2e-tests have not completed for TKT-1"
         ]
       }
     },
